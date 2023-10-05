@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <title>Home</title>
+</head>
+<body class="bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-black">
+        <a class="navbar-brand mx-5 px-3 border border-secondary rounded-3" href="#">Get some help :(</a>
+    </nav>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-3 bg-black show" id="collapseSidePanel">
+            <a class="m-2 btn bg-secondary" data-bs-toggle="collapse" href="#collapseSidePanel" role="button" aria-expanded="true" aria-controls="collapseSidePanel">Hide</a>
+        </div>
+        <div class="col bg-secondary vh-100">
+            <a class="m-2 btn bg-dark text-white collapse" id="collapseSidePanel" data-bs-toggle="collapse" href="#collapseSidePanel" role="button" aria-expanded="false" aria-controls="collapseSidePanel">Show</a>
+            <p>{%block message%} {{message}} {%endblock%}</p>
+        </div>
+    </div>
+</div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+</body>
+</html>
