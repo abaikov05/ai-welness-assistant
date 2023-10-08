@@ -76,8 +76,12 @@ WSGI_APPLICATION = 'web.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'db.ai-wellbeing-assistant',
+        'USER': 'root',
+        'PASSWORD': '11283132AzazaR',
+        'HOST':'localhost',
+        'PORT':'3306',
     }
 }
 

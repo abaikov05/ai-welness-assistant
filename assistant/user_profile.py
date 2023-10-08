@@ -1,6 +1,7 @@
 from helpers import openai_chat_request
-import os
 from textwrap import dedent
+import os
+import json
 
 class Profile:
 
@@ -11,7 +12,8 @@ class Profile:
                 self.profile = eval(file.read())
         else:
             with open(self.path, 'x') as file:
-                file.write('{1: "Change this one!"}')
+                file.write('{"1": "Change this one!"}')
+                self.profile = {"1": "Change this one!"}
 
     async def update_user_profile(self, previous_message: str, user_message: str) -> None:
 
@@ -24,7 +26,7 @@ class Profile:
         print("New profile:\n", self.profile)
 
         with open(self.path, 'w') as file:
-            file.write(self.profile)
+            file.write(json.dumps(self.profile))
         return None
 
     async def generate_user_profile(self, previous_message: str, user_message: str) -> str:

@@ -1,6 +1,6 @@
 from moderation import ModerationBot
 from tools_extrctor import extract_tools
-from assistant.user_profile import Profile
+from user_profile import Profile
 import asyncio
 
 class Responder():
