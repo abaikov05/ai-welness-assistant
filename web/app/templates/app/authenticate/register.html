@@ -1,0 +1,17 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Register{% endblock %}
+
+{% block content %}
+<div class="container-fluid bg-dark text-white ">
+    <div class="row justify-content-center mt-5">
+        <div class="col-sm-6">
+            <form method="POST" class="bg-black p-5 border rounded-5">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" class="btn btn-dark">Register</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
