@@ -1,0 +1,17 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Chat{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-3 bg-black show" id="collapseSidePanel">
+            <a class="m-2 btn bg-secondary" data-bs-toggle="collapse" href="#collapseSidePanel" role="button" aria-expanded="true" aria-controls="collapseSidePanel">Hide</a>
+        </div>
+        <div class="col bg-dark vh-100">
+            <a class="m-2 btn bg-dark text-white collapse" id="collapseSidePanel" data-bs-toggle="collapse" href="#collapseSidePanel" role="button" aria-expanded="false" aria-controls="collapseSidePanel">Show</a>
+            <p>Hi</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
