@@ -1,8 +1,8 @@
 from django.shortcuts import render, redirect
 
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.forms import AuthenticationForm
+from .forms import RegisterUserForm, LoginUserForm
 from django.contrib import messages
 # Create your views here.
 
@@ -21,15 +21,15 @@ def login_user(request):
             login(request, user)
             return redirect('chat')
         else:
-            messages.error(request, ("Failed to log in"))
-            return redirect('login_user')
+            form = LoginUserForm(request)
+            return render(request, 'app/authenticate/login.html', {'form': form, 'message': 'Wrong username or password!'})
     else:
-        form = AuthenticationForm(request)
-        return render(request, 'app/authenticate/login.html', {'form': form})
+        form = LoginUserForm(request)
+        return render(request, 'app/authenticate/login.html', {'form': form, 'message': ''})
 
 def register_user(request):
     if request.method == "POST":
-        form = UserCreationForm(request.POST)
+        form = RegisterUserForm(request.POST)
         if form.is_valid():
             form.save()
             username = form.cleaned_data['username']
@@ -39,7 +39,7 @@ def register_user(request):
             messages.success(request, ("Registration seccesful"))
             return redirect('chat')
     else:
-        form = UserCreationForm()
+        form = RegisterUserForm()
     return render(request, 'app/authenticate/register.html', {'form': form})
 
 def logout_user(request):
