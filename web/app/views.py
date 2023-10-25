@@ -1,9 +1,12 @@
 from django.shortcuts import render, redirect
 
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.forms import AuthenticationForm
+# from django.contrib.auth.forms import AuthenticationForm
 from .forms import RegisterUserForm, LoginUserForm
 from django.contrib import messages
+from .models import Message, Chat, User_profile
+
+from .assistant.responder import *
 # Create your views here.
 
 def home(request):
@@ -11,6 +14,25 @@ def home(request):
 
 def chat(request):
     return render(request, "app/chat.html", {})
+
+async def send_message(request):
+    user_id = request.user
+    message = request.POST['message']
+    chat = Chat.objects.get(user=user_id)
+    if not chat:
+        chat = Chat(user=user_id)
+        chat.save()
+    db_message = Message(chat=chat, text=message)
+    db_message.save()
+
+    user_profile = User_profile(user=user_id)
+    previous_message = Message.objects.filter(chat=chat).latest()
+
+    responder = Responder(user_profile, previous_message)
+
+    response = await responder.handle_user_message(message)
+
+    return redirect('chat', {'responce': response})
 
 def login_user(request):
     if request.method == "POST":

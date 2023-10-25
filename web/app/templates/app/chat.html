@@ -6,12 +6,58 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-md-3 bg-black show" id="collapseSidePanel">
-            <a class="m-2 btn bg-secondary" data-bs-toggle="collapse" href="#collapseSidePanel" role="button" aria-expanded="true" aria-controls="collapseSidePanel">Hide</a>
+            <a class="m-2 btn bg-secondary" data-bs-toggle="collapse" href="#collapseSidePanel" role="button"
+                aria-expanded="true" aria-controls="collapseSidePanel">Hide</a>
         </div>
         <div class="col bg-dark vh-100">
-            <a class="m-2 btn bg-dark text-white collapse" id="collapseSidePanel" data-bs-toggle="collapse" href="#collapseSidePanel" role="button" aria-expanded="false" aria-controls="collapseSidePanel">Show</a>
-            <p>Hi</p>
+            <a class="m-2 btn bg-dark text-white collapse" id="collapseSidePanel" data-bs-toggle="collapse"
+                href="#collapseSidePanel" role="button" aria-expanded="false" aria-controls="collapseSidePanel">Show</a>
+            <div class="container mt-5">
+                <div class="row text-white">
+                    <div class="col-md-6 mx-auto chat-container">
+                        <div class="message assistant-message">
+                            Hi there! How can I assist you today?
+                        </div>
+                        <div class="message user-message">
+                            Hello! I have a question.
+                        </div>
+                        <!-- Add more messages here -->
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6 mx-auto">
+                        <form id="post-form">
+                            <div class="input-group">
+                                {% csrf_token %}
+                                <input id= "message_textbox", name="message_textbox" type="text" class="form-control" placeholder="Type your message...">
+                                <button type='submit' class="btn btn-success">Send</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block script %}
+<script type="text/javascript">
+    $(document).on('submit', '#post-form', function(e){
+        e.preventDefault();
+
+        $.ajax({
+            type: 'POST',
+            url: 'chat/send_message',
+            data:{
+                message: $('#message_textbox').val(),
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            },
+            success: function(data){
+                alert(data)
+            }
+        });
+        document.getElementById('message_textbox')
+    })
+</script>
 {% endblock %}

@@ -5,15 +5,8 @@ import json
 
 class Profile:
 
-    def __init__(self, path):
-        self.path = path
-        if os.path.exists(self.path):
-            with open(self.path, 'r', encoding="utf-8") as file:
-                self.profile = eval(file.read())
-        else:
-            with open(self.path, 'x') as file:
-                file.write('{"1": "Change this one!"}')
-                self.profile = {"1": "Change this one!"}
+    def __init__(self, user_profile: str) -> None:
+        self.profile = user_profile
 
     async def update_user_profile(self, previous_message: str, user_message: str) -> None:
 
@@ -25,8 +18,6 @@ class Profile:
 
         print("New profile:\n", self.profile)
 
-        with open(self.path, 'w') as file:
-            file.write(json.dumps(self.profile))
         return None
 
     async def generate_user_profile(self, previous_message: str, user_message: str) -> str:

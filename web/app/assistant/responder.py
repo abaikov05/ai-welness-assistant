@@ -4,7 +4,7 @@ from user_profile import Profile
 import asyncio
 
 class Responder():
-    def __init__(self, profile_path = '/user_profile'):
+    def __init__(self, user_profile: str, previous_message: str) -> None:
         self.moderation = ModerationBot()
         self.user_profile = Profile(profile_path)
 
