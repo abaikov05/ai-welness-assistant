@@ -1,6 +1,6 @@
 import openai
 
-class ModerationBot:
+class Moderation:
     """
     This class takes user message as input and returns:
       - True/False - whether the message has been flagged

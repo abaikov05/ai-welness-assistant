@@ -1,4 +1,4 @@
-from helpers import openai_chat_request
+from .helpers import openai_chat_request
 from textwrap import dedent
 
 async def extract_tools(previous_message: str, user_message: str) -> list[str] | None:

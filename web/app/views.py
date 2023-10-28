@@ -15,24 +15,25 @@ def home(request):
 def chat(request):
     return render(request, "app/chat.html", {})
 
-async def send_message(request):
+def send_message(request):
     user_id = request.user
     message = request.POST['message']
-    chat = Chat.objects.get(user=user_id)
-    if not chat:
+    if Chat.objects.check(user=user_id):
+        chat = Chat.objects.get(user=user_id)
+    else:
         chat = Chat(user=user_id)
         chat.save()
     db_message = Message(chat=chat, text=message)
     db_message.save()
 
     user_profile = User_profile(user=user_id)
-    previous_message = Message.objects.filter(chat=chat).latest()
+    previous_message = Message.objects.filter(chat=chat).latest('text')
 
-    responder = Responder(user_profile, previous_message)
+    # responder = Responder(user_profile, previous_message)
+    # 
+    # response = await responder.handle_user_message(message)
 
-    response = await responder.handle_user_message(message)
-
-    return redirect('chat', {'responce': response})
+    return redirect('chat')
 
 def login_user(request):
     if request.method == "POST":

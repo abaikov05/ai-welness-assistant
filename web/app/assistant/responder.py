@@ -1,12 +1,12 @@
-from moderation import ModerationBot
-from tools_extrctor import extract_tools
-from user_profile import Profile
+from .moderation import Moderation
+from .tools_extrctor import extract_tools
+from .user_profile import Profile
 import asyncio
 
 class Responder():
     def __init__(self, user_profile: str, previous_message: str) -> None:
-        self.moderation = ModerationBot()
-        self.user_profile = Profile(profile_path)
+        self.moderation = Moderation()
+        self.user_profile = Profile()
 
     async def handle_user_message(self, user_message) -> str:
         

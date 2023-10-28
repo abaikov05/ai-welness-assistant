@@ -1,4 +1,4 @@
-from helpers import openai_chat_request
+from .helpers import openai_chat_request
 from textwrap import dedent
 import os
 import json

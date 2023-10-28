@@ -14,7 +14,7 @@
                 href="#collapseSidePanel" role="button" aria-expanded="false" aria-controls="collapseSidePanel">Show</a>
             <div class="container mt-5">
                 <div class="row text-white">
-                    <div class="col-md-6 mx-auto chat-container">
+                    <div id="chat-container" class="col-md-6 mx-auto">
                         <div class="message assistant-message">
                             Hi there! How can I assist you today?
                         </div>
@@ -26,10 +26,10 @@
                 </div>
                 <div class="row mt-3">
                     <div class="col-md-6 mx-auto">
-                        <form id="post-form">
+                        <form id="message-form">
                             <div class="input-group">
                                 {% csrf_token %}
-                                <input id= "message_textbox", name="message_textbox" type="text" class="form-control" placeholder="Type your message...">
+                                <input id= "message_textbox", name="message-textbox" type="text" class="form-control" placeholder="Type your message...">
                                 <button type='submit' class="btn btn-success">Send</button>
                             </div>
                         </form>
@@ -43,21 +43,57 @@
 
 {% block script %}
 <script type="text/javascript">
-    $(document).on('submit', '#post-form', function(e){
-        e.preventDefault();
 
-        $.ajax({
-            type: 'POST',
-            url: 'chat/send_message',
-            data:{
-                message: $('#message_textbox').val(),
-                csrfmiddlewaretoken: '{{ csrf_token }}'
-            },
-            success: function(data){
-                alert(data)
-            }
-        });
-        document.getElementById('message_textbox')
+    const chatSocket = new WebSocket(
+        'ws://'
+        + window.location.host
+        + '/ws/'
+        + 'chat'
+    )
+
+    let message_form = document.getElementById('message-form')
+
+    message_form.addEventListener('submit', (e)=> {
+        e.preventDefault()
+        let message = e.target.message_textbox.value
+        console.log(message)
+        chatSocket.send(JSON.stringify({
+            'message': message,
+        }))
+        message_form.reset()
     })
+    chatSocket.onmessage = function(e){
+        let data = JSON.parse(e.data)
+        console.log('Recived data:', data)
+        if(data.type === 'user_message'){
+            let chat = document.getElementById('chat-container')
+            // let user_message = '<div class="message user-message">${data.user_message}</div>'
+            chat.insertAdjacentHTML('beforeend', '<div class="message user-message">'
+                + data.user_message
+                + '</div>'
+                )
+        }
+    }
+    chatSocket.onclose = function(e){
+        console.log('Fuck you! I am disconneting.')
+    }
+    
+
+    // $(document).on('submit', '#post-form', function(e){
+    //     e.preventDefault();
+
+    //     $.ajax({
+    //         type: 'POST',
+    //         url: 'chat/send_message',
+    //         data:{
+    //             message: $('#message_textbox').val(),
+    //             csrfmiddlewaretoken: '{{ csrf_token }}'
+    //         },
+    //         success: function(data){
+    //             alert(data)
+    //         }
+    //     });
+    //     document.getElementById('message_textbox')
+    // })
 </script>
 {% endblock %}
