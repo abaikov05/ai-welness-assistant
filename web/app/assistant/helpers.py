@@ -1,10 +1,11 @@
 import asyncio
 import openai
+import tiktoken
 
-async def openai_chat_request(prompt=None, messages=None, system="You are a helpful assistant.", model="gpt-3.5-turbo-16k", max_retries=5, temperature=1, stream=False, max_tokens=1000, timeout=20):
+async def openai_chat_request(prompt=None, messages=None, system="You are a helpful assistant.", model="gpt-3.5-turbo-16k", max_retries=5, temperature=1, max_tokens=1000, timeout=20):
     """
-    This function makes a chat request to OpenAI and returns the response.
-    In case of an error, or if the request (non-streaming) takes longer than 'timeout' seconds, it retries up to 'max_retries' times with exponential backoff.
+    This function makes a chat request to OpenAI and returns the response and information about used tokens.
+    In case of an error, or if the request takes longer than 'timeout' seconds, it retries up to 'max_retries' times with exponential backoff.
     """
     if not messages:
         messages = [
@@ -15,30 +16,20 @@ async def openai_chat_request(prompt=None, messages=None, system="You are a help
 
     for _ in range(max_retries):
         try:
-            if stream:  # No timeout for streaming requests
-                chat_completion_resp = await openai.ChatCompletion.acreate(
-                    model=model,
-                    messages=messages,
-                    temperature=temperature,
-                    stream=stream,
-                    max_tokens=max_tokens
-                )
-                return chat_completion_resp
-            else:  # Apply timeout only when stream=False
-                chat_completion_resp = await asyncio.wait_for(openai.ChatCompletion.acreate(
-                    model=model,
-                    messages=messages,
-                    temperature=temperature,
-                    stream=stream,
-                    max_tokens=max_tokens
-                ), timeout=timeout)
+            chat_completion_resp = await asyncio.wait_for(openai.ChatCompletion.acreate(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens
+            ), timeout=timeout)
 
-                if 'choices' in chat_completion_resp:
-                    response = chat_completion_resp['choices'][0]['message']['content']
-                    return response
-                else:
-                    raise Exception(
-                        f"Unexpected response from OpenAI API: {chat_completion_resp}")
+            if 'choices' in chat_completion_resp:
+                response = chat_completion_resp['choices'][0]['message']['content']
+                token_usage = chat_completion_resp['usage']
+                return response, token_usage
+            else:
+                raise Exception(
+                    f"Unexpected response from OpenAI API: {chat_completion_resp}")
         except asyncio.TimeoutError:
             print(f"OpenAI response timed out, retrying in {wait_time} seconds...")
         except Exception as e:
@@ -49,8 +40,7 @@ async def openai_chat_request(prompt=None, messages=None, system="You are a help
         wait_time *= 2
 
     print("Maximum retries reached.")
-    return None
-
+    return None, None
 
 # def num_tokens_from_string(message, model="gpt-3.5-turbo-16k-0613"):
 #     """Return the number of tokens used by a message."""
@@ -86,6 +76,6 @@ async def openai_chat_request(prompt=None, messages=None, system="You are a help
 
 #     num_tokens = tokens_per_message
 #     num_tokens += len(encoding.encode(message))
-#     num_tokens += 3  # every reply is primed with assistant
+#     num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
 
 #     return num_tokens

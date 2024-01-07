@@ -28,7 +28,5 @@ class Moderation:
             categories = response['results'][0]['categories']
             flagged_categories = [category for category,
                                   value in categories.items() if value]
-            # make user message as flagged categories for analytics 
-            user_message = [f"Message flagged as: {flagged_categories}"]
             
         return flagged, flagged_categories

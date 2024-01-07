@@ -1,19 +1,23 @@
 {% extends 'app/base.html' %}
+{% load static%}
 
 {% block title %}Login{% endblock %}
 
+{% block style %}<link rel="stylesheet" href="{% static 'app/auth_style.css' %}">{% endblock %}
+
 {% block content %}
-<div class="container-fluid bg-dark text-white ">
+<div class="container-fluid text-white">
     <div class="row justify-content-center mt-5">
-        <div class="col-sm-4">
+        <div class="col-sm-4 mt-5">
             {% if message %}
               <div role='alert' class="alert alert-warning">{{message}}</div>
             {% endif %}
-            <form method="POST" action="{% url 'login_user' %}" class="bg-black p-5 border rounded-5">
+            <form method="POST" action="{% url 'login_user' %}" class="py-3 px-4 border rounded-3 mt-5">
+              <h4 class="text-center mb-3">Login in to account</h4>
               {% csrf_token %}
               {{ form.as_p }}
               <div class="d-flex justify-content-center">
-                <button type="submit" class="btn btn-dark mt-2 px-5">Login</button>
+                <button type="submit" class="btn mt-2 px-5">Login</button>
               </div>
             </form>
         </div>

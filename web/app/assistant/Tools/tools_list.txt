@@ -1,0 +1,41 @@
+# Write your tools descriptions here.
+[
+    {
+        'name': 'tools info',
+        'description': 'Tells about available tools',
+        'function_name': tools_info,
+        'needs_inputs': False,
+        'inputs': [],
+        'required_inputs': [],
+        'inputs_description': ''
+    },
+
+    {
+        'name': 'weather',
+        'description': 'tells current weather',
+        'function_name': weather,
+        'needs_inputs': True,
+        'inputs': ['location'],
+        'required_inputs': ['location'],
+        'inputs_description': 'Location - city, street or region to check weather'
+    },
+
+    {
+        'name': 'news',
+        'description': 'Searches for current top headlines, by key words and categories',
+        'function_name': news,
+        'needs_inputs': True,
+        'inputs': ['key_words', 'category'],
+        'required_inputs': ['key_words'],
+        'inputs_description': 'Key words - word or a phrase to search news for. Catogory - you can only select one of these categories: business, entertainment, general, health, science, sports, technology. (optional)'
+    },
+    {
+        'name': 'calculator',
+        'description': 'Calculates given expression',
+        'function_name': calculator,
+        'needs_inputs': True,
+        'inputs': ['expression'],
+        'required_inputs': ['expression'],
+        'inputs_description': 'Simple expression'
+    },
+]
