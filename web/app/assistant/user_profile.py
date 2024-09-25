@@ -3,6 +3,7 @@ from textwrap import dedent
 import os
 import json
 
+
 class Profile:
     """
     Represents a user profile and provides methods to generate and update the profile using GPT responses.
@@ -17,6 +18,7 @@ class Profile:
         async update_user_profile(previous_messages: str, user_message: str) -> list|None:
             Updates the user profile by applying the changes suggested by GPT, and returns the updated profile as a list.
     """
+
     def __init__(self, user_profile: str, gpt_model: str) -> None:
         """
         Initialize the Profile object with user profile and GPT model.
@@ -32,7 +34,9 @@ class Profile:
 
         self.gpt_model = gpt_model
 
-    async def generate_user_profile(self, previous_messages: str, user_message: str) -> (dict|None, dict|None):
+    async def generate_user_profile(
+        self, previous_messages: str, user_message: str
+    ) -> (dict | None, dict | None):
         """
         Generates the user profile based on chat history and the latest user message.
 
@@ -46,7 +50,8 @@ class Profile:
         """
 
         # System message with instruction
-        system_message = dedent("""\
+        system_message = dedent(
+            """\
         Your task is to update or generate a user profile from recent chat.
         Provide concise entries for user preferences, likes, dislikes, and key aspects of the user's personality.
         Your response should be short but descriptive, focusing on the most useful data for understanding the user.
@@ -56,20 +61,29 @@ class Profile:
         NEVER RESPOND DIRECTLY TO THE USER!
         Follow this JSON format:
         {"1": "Changed text describing the first element", "2": "Changed text describing the second element"}
-        """)
+        """
+        )
 
         # Compose the prompt for profile generation
-        prompt = "PREVIOUS USER PROFILE:|\n" + json.dumps(self.profile) + "\nCHAT HISTORY:|\n" + previous_messages + f"""\
+        prompt = (
+            "PREVIOUS USER PROFILE:|\n"
+            + json.dumps(self.profile)
+            + "\nCHAT HISTORY:|\n"
+            + "\n".join(previous_messages)
+            + f"""\
         Last user message: {user_message}|
         |\nRemember format: {{"number": "Changed text of this element", "number": "Changed text of this element"}}"""
+        )
 
         print("- Profiler prompts:\n", system_message, prompt)
-        responce, token_usage = await openai_chat_request(prompt=prompt, system=system_message, temperature=0.8, model=self.gpt_model)
-        print("- Generated user prifile changes:", responce, '\n', '_'*100)
+        responce, token_usage = await openai_chat_request(
+            prompt=prompt, system=system_message, temperature=0.8, model=self.gpt_model
+        )
+        print("- Generated user prifile changes:", responce, "\n", "_" * 100)
 
         # Process and validate the response
-        if responce and responce.strip() != '':
-            try:  
+        if responce and responce.strip() != "":
+            try:
                 responce = json.loads(responce)
                 return responce, token_usage
             except Exception as e:
@@ -77,8 +91,10 @@ class Profile:
                 return None, token_usage
         else:
             return None, None
-        
-    async def update_user_profile(self, previous_messages: str, user_message: str) -> (list|None, dict|None):
+
+    async def update_user_profile(
+        self, previous_messages: str, user_message: str
+    ) -> (list | None, dict | None):
         """
         Update the user profile based on chat history and the latest user message.
 
@@ -91,7 +107,9 @@ class Profile:
             and dictionary with token usage information.
         """
         # Generate profile changes
-        profile_changes, token_usage = await self.generate_user_profile(previous_messages=previous_messages, user_message=user_message)
+        profile_changes, token_usage = await self.generate_user_profile(
+            previous_messages=previous_messages, user_message=user_message
+        )
 
         print("Last profile:\n", self.profile)
         # Apply profile changes if any
