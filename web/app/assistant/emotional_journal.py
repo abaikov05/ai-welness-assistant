@@ -30,7 +30,7 @@ class EmotionalJournal():
             self.updates_count = 0
         self.gpt_model = gpt_model
 
-    async def update_journal(self, chat_history: list) -> (dict, int, date, dict):
+    async def update_journal(self, chat_history: list) -> tuple[dict, int, date, dict]:
         """
         Update the emotional journal based on the analysis of the provided chat history.
 

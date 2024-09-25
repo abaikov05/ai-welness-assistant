@@ -129,7 +129,7 @@ class Tools():
         print(f'Tool "{tool_name}" not found!')    
         return None
     
-    async def extract_inputs(self, tool_name: str, chat_history: str) -> (dict[str, str | None], list[str | None]) or None:
+    async def extract_inputs(self, tool_name: str, chat_history: str) -> tuple[dict[str, str | None], list[str | None]] | None:
         """
         Extracts inputs for a specified tool from the conversation and returns a dictionary of inputs and list of missing inputs.
 
@@ -279,7 +279,7 @@ class Tools():
 
         return tool_result, metadata
     
-    async def run_tools(self, tools_list: list[str], inputs: dict[str, str]) -> (str | None, dict[str, str]):
+    async def run_tools(self, tools_list: list[str], inputs: dict[str, str]) -> tuple[str | None, dict[str, str]]:
         """
         Run the specified tools with given inputs.
 
@@ -336,7 +336,7 @@ class Tools():
                         }
             return tool_result, metadata
 
-    async def handle_tools(self, extract_inputs: bool, user_message: str, chat_history: list, messages_for_input_extraction: int) -> (str, dict) or (None, None):
+    async def handle_tools(self, extract_inputs: bool, user_message: str, chat_history: list, messages_for_input_extraction: int) -> tuple[str, dict] | tuple[None, None]:
         """
         Handle the extraction and execution of tools based on user message and chat history.
 
