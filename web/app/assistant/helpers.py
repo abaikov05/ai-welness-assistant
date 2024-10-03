@@ -1,6 +1,6 @@
 import asyncio
 import openai
-import tiktoken
+# import tiktoken
 
 async def openai_chat_request(prompt=None, messages=None, system="You are a helpful assistant.", model="gpt-3.5-turbo-16k", max_retries=5, temperature=1, max_tokens=1000, timeout=20):
     """
@@ -41,6 +41,7 @@ async def openai_chat_request(prompt=None, messages=None, system="You are a help
 
     print("Maximum retries reached.")
     return None, None
+
 
 # def num_tokens_from_string(message, model="gpt-3.5-turbo-16k-0613"):
 #     """Return the number of tokens used by a message."""

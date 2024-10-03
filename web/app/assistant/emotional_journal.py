@@ -16,13 +16,17 @@ class EmotionalJournal():
         - current_date (class): Current date.
 
         """
-        self.current_date = current_date
         self.journal_date = journal_date
 
-        if journal_date != current_date or not journal:
-            self.journal = {}
-        else:
-            self.journal = json.loads(journal)
+        # Why the fuck I need this if it gets of creates current date journal in consumers?
+        
+        # self.current_date = current_date
+        
+        # if journal_date != current_date or not journal:
+        #     self.journal = {}
+        # else:
+        #     self.journal = json.loads(journal)
+        self.journal = json.loads(journal)
 
         if updates_count:
             self.updates_count = updates_count
@@ -45,28 +49,36 @@ class EmotionalJournal():
         system = dedent("""\
         Your task is to deeply analize conversation and give a mark to common primal emotions that user might feel.
         Mark must always be in range 0-100.
-        Your responce is always JSON file with this format:
+        Your response is always JSON file with this format:
         {
             "emotion_name": "mark",
             "emotion_name": "mark",
             ...
         }""")
-
+        
+        # TODO Chat history prompt does not contain names of senders
+        
         # Prase chat history list to string
         chat_history = '\n'.join(chat_history)
         # Create a prompt with chat history
         prompt = f"Conversation:|\n{chat_history}|"
 
         # Request a response from the OpenAI GPT model.
-        responce, token_usage = await openai_chat_request(prompt = prompt, system = system, model = self.gpt_model)
+        response, token_usage = await openai_chat_request(prompt = prompt, system = system, model = self.gpt_model)
 
-        print("Journal:\n",prompt,'\n', responce)
-
-        # Check if response exists
-        if responce is not None:
+        print("_"*20)
+        print("--- Journal prompt:\n",prompt, "\n--- Journal update response:\n", response)
+        print("_"*20)
+        
+        # If response exists
+        if response is not None:
             # Attempt to parse the response as JSON
             try:
-                responce = json.loads(responce)
+                response = json.loads(response)
+                
+                # If the response is empty dictionary don't update the journal
+                if len(response) == 0:
+                    return None, None, None, token_usage
 
             # Handle the case where the response has an unexpected format
             except:
@@ -80,21 +92,26 @@ class EmotionalJournal():
                 print("GPT tried to update emotional journal but no changes were made!")
                 return None, None, None, token_usage
             
-            # Return None for all values as there is response and token usage
+            # Return None for all values if there was no response and token usage
             return None, None, None, None
         
         # Increment the count of updates made to the emotional journal
         self.updates_count += 1
-
-        # Update the emotional journal based on the response
-        for item in responce.items():
-            key, value = item
-
-            # If the emotion is already present in the journal, update the average score
-            if self.journal.get(key):
-                self.journal[key] = round((self.journal[key] + (float(value) - self.journal[key]) / self.updates_count), 2)
-            # If the emotion is new, set the initial avarage score
-            else:
-                self.journal[key] = float(value) / self.updates_count
+        
+        # If it is the first update, simply save response as a journal.
+        if self.updates_count <= 1:
+            self.journal = response
+            return self.journal, self.updates_count, self.journal_date, token_usage
+        else:
+            # Update avarage scores of emotions that are not in response
+            for key, value in self.journal.items():
+                if not response.get(key):
+                    self.journal[key] = round((float(value) * (self.updates_count - 1) + 0) / self.updates_count ,2)
+            # Than update emotions that are in response
+            for key, value in response.items():
+                if self.journal.get(key):
+                    self.journal[key] = round((float(self.journal[key]) * (self.updates_count - 1) + float(value)) / self.updates_count ,2)
+                else:
+                    self.journal[key] = round(float(value)/self.updates_count, 2)
 
         return self.journal, self.updates_count, self.journal_date, token_usage

@@ -19,11 +19,6 @@ openai.api_key = os.getenv("OPENAI_KEY")
 class Responder:
     """
     The Responder class manages the response generation process within the AI Wellbeing Assistant.
-    The class encapsulates the logic needed to orchestrate the assistant's
-    behavior in responding to user, ensuring a thoughtful and context-aware conversation.
-    It integrates various components such as moderation, tools, user profiles, emotional journal,
-    and assistant settings to handle incoming user messages. The class is responsible for processing user messages,
-    applying moderation checks, updating user profiles and emotional journals, and generating appropriate responses.
     """
     def __init__(self, user_profile: str, chat_history: list[str], assistant_settings: AssistantSettings, message_count: int = None, emotional_journal: EmotionalJournal = None) -> None:
         """
@@ -44,7 +39,7 @@ class Responder:
         self.chat_history = chat_history
         self.message_count = message_count
 
-        # Dictionary to track the total tokens used for GPT prompts and responces for every module.
+        # Dictionary to track the total tokens used for GPT prompts and responses for every module.
         self.total_tokens_used = {
             "Tools":{},
             "Profiler":{},
@@ -145,7 +140,7 @@ class Responder:
         else:
             journal_update = None
         
-        #  Initiate prompt to add tools result.
+        # Initiate prompt to add tools result.
         prompt = ""
         
         # Check if tools returned metadata
