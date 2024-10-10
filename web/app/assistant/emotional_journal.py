@@ -76,10 +76,19 @@ class EmotionalJournal():
             try:
                 response = json.loads(response)
                 
+                # Try to parse values to float and deletes not valid elements from response
+                for key, value in list(response.items()):
+                    try:
+                        value = float(value)
+                        if not (0 <= value <= 100):
+                            del response[key]
+                    except:
+                        del response[key]
+                        
                 # If the response is empty dictionary don't update the journal
                 if len(response) == 0:
                     return None, None, None, token_usage
-
+                
             # Handle the case where the response has an unexpected format
             except:
                 print("Wrong emotional journal format from GPT")
@@ -107,6 +116,7 @@ class EmotionalJournal():
             for key, value in self.journal.items():
                 if not response.get(key):
                     self.journal[key] = round((float(value) * (self.updates_count - 1) + 0) / self.updates_count ,2)
+                    
             # Than update emotions that are in response
             for key, value in response.items():
                 if self.journal.get(key):
