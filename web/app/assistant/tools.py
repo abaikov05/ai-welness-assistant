@@ -4,12 +4,12 @@ import json
 
 # Import all tool functions
 from .Tools.tools_functions import *
-
+# FIXME Names of tools in browser
 class Tools():
     """
     This class ir core component for managing and executing tools within the AI Wellbeing Assistant.
-    It manages the extraction of relevant tools based on user messages and conversation context, as well as the
-    execution of these tools.
+    It manages the extraction of relevant tools and inputs based on user messages and conversation context,
+    as well as the execution of these tools.
     """
     def __init__(self, gpt_model:str, tools_path = "web/app/assistant/Tools/tools_list.txt"):
         """
@@ -37,6 +37,10 @@ class Tools():
     async def extract_tools(self, user_message: str, previous_message: str) -> list[str]:
         """
         Extracts relevant tools based on the user's message and previous message context.
+        
+        This function uses the OpenAI GPT model to analyze the user's message and identify if there
+        is an intention to use a tool. The function provides information about available tools to the model.
+        The response is processed, and a list of tool names is returned if any relevant tools are identified.
 
         Args:
         - user_message (str): The current user message.
@@ -44,18 +48,8 @@ class Tools():
 
         Returns:
         A (list) of relevant tools (str) extracted from the user's message, or None if no tools are detected.
-
-        This function uses the OpenAI GPT model to analyze the user's message and identify if there
-        is an intention to use a tool. The system provides information about available tools to the model.
-        The response is processed, and a list of tool names is returned if any relevant tools are identified.
+        
         If no tools are found, the function returns None.
-
-        Usage Example:
-        extracted_tools = await extract_tools("How can I schedule a meeting?", "Tell me about scheduling tools.")
-        if extracted_tools:
-            print(f"Detected tools: {extracted_tools}")
-        else:
-            print("No relevant tools detected.")
         """
         # Construct a system message providing task and context about available tools.
         system_message = dedent(f"""\
@@ -86,13 +80,17 @@ class Tools():
             self.total_tokens_used = {key: self.total_tokens_used[key] + token_usage[key] for key in self.total_tokens_used}
 
         # Debugging information.
-        print("- Tool extraction:\n" ,prompt, '\n', system_message, '\n', response, '\n' ,'_'*100)
+        print("_"*20)
+        print("- Tool extraction:\n" ,prompt, '\n', system_message, '\n', response)
+        print("_"*20)
 
-        # Process the GPT response if it is not empty. If responce is empty, GPT found available tools to use.
+        # Process the GPT response if it is not empty. If responce is empty, GPT not found available tools to use.
         if response and response.strip() != '':
 
-            # Split the response into a list of tool names.
-            response = response.split(', ')
+            # Remove spaces and split the response into a list of tool names.
+            response = response.replace(' ', '')
+            response = response.split(',')
+
             valid_tools = []
 
             # Validate and filter tool names against the valid tools list.
@@ -101,7 +99,7 @@ class Tools():
                     if item == tool['name']:
                         valid_tools.append(str(item))
 
-            # Return the list of relevant tool names if found, otherwise, return None.
+            # Return the list of tool names if found, otherwise, return None.
             if valid_tools:
                 return valid_tools
             else:
@@ -142,34 +140,24 @@ class Tools():
         Returns None if no response or an error occurred during input extraction.
 
         This function uses the OpenAI GPT model to analyze the conversation and extract inputs for a specified tool function.
-        The tool is identified using its name, and the conversation history is used to provide context for input extraction.
 
         If an input has '(optional)' in the description, it can be empty.
+        
         If there are no inputs in user messages or a required input is missing, the function returns a tuple with an empty dictionary
         and a list of missing required inputs.
 
         If no response or an error occurs during input extraction, the function returns None.
-
-        Usage Example:
-        tool_name = "weather"
-        chat_history = "User: Can you tell weather?\nAssistant: Sure, please provide the details..."
-        inputs, missing_inputs = await extract_inputs(tool_name, chat_history)
-        if inputs:
-            print(f"Extracted Inputs: {inputs}")
-            if missing_inputs:
-                print(f"Missing Inputs: {missing_inputs}")
-        else:
-            print("No inputs extracted or an error occurred during extraction.")
         """
         # Get information about the tool
         tool = self.get_tool(tool_name)
 
         # Construct a system message providing task.
         system_message = dedent("""\
-        Extract inputs for the described function from the conversation and respond with a JSON file containing inputs. Follow this format:
+        Extract inputs for the described function from the conversation and respond with a JSON file containing inputs.
+        Follow this format:
         {
-            input_name1: 'input1',
-            input_name2: 'input2',
+            "input_name1": "input1",
+            "input_name2": "input2",
             ...
         }
         Ensure all inputs are in the same sequence as described.
@@ -195,10 +183,12 @@ class Tools():
             self.total_tokens_used = {key: self.total_tokens_used[key] + token_usage[key] for key in self.total_tokens_used}
 
         # Debug information.
-        print("- Input extraction:\n", prompt, system_message, response, '\n', '_'*100)
+        print("_"*20)
+        print("- Input extraction:\n", prompt, system_message, response)
+        print("_"*20)
 
         # Process the response to extract inputs.
-        if response:
+        if response and response.strip() != '':
             inputs = {}
             missing_inputs = []
             try:
@@ -210,8 +200,8 @@ class Tools():
                     # Get the value of the valid input from the parsed response.
                     response_input = response.get(input)
                     
-                    # If the input is found in the response, add it to the inputs dictionary.
-                    if response_input:
+                    # If the input is found in the response and is not empty, add it to the inputs dictionary.
+                    if response_input and response_input.strip() != '':
                         inputs[input] = response_input
 
                     # If the input is not found, check if it is a required input.
@@ -230,23 +220,25 @@ class Tools():
             # Handle exceptions that may occur during JSON parsing and return None.
             except Exception as e:
                 print('Error in input format from GPT', e)
-                # Return None as tool result and tool's required inputs as missing
+                # Return None as tool inputs and tool's required inputs as missing
                 missing_inputs = tool['required_inputs']
+                
+                # FIXME It simply returns None if error in format. Is it OK?
                 return None, missing_inputs
         else:
             # If GPT did not find any inputs, print a message.
             print("GPT did not find any inputs!")
             missing_inputs = tool['required_inputs']
-            # Return None as tool result and tool's required inputs as missing
+            # Return None as tool inputs and tool's required inputs as missing
             return None, missing_inputs
     
-    def ask_for_inputs(self, tool_name: str, missing_inputs: list, inputs = None):
+    def ask_for_inputs(self, tool_name: str, missing_inputs: list, inputs: None|dict = None ):
         """
         Generates metadata for the input request.
 
         Args:
         - tool_name (str): The name of the tool for which inputs are requested.
-        - missing_inputs: (list): List of missing required inputs for the tool.
+        - missing_inputs (list): List of missing required inputs for the tool.
         - inputs (dict): (Optional) Dictionary containing already found inputs.
 
         Returns:
@@ -255,15 +247,12 @@ class Tools():
         # Get information about the tool
         tool = self.get_tool(tool_name)
 
-        # Tool is missing inputs, so result is None
-        tool_result = None
-        
         # If no found inputs are not provided, create an dictionary with inputs as a key and set all values to empty string.
         if inputs == None:
             inputs = {}
             tool_inputs = tool['inputs']
             for input in tool_inputs:
-                inputs[input] = ''
+                inputs[input] = None
 
         # Create metadata dictionary for the input request.
         metadata = {
@@ -274,18 +263,23 @@ class Tools():
             "inputs_description": tool['inputs_description']
         }
 
+        # Tool is missing inputs, so result is None
+        tool_result = None
+        
         # Print information for debugging.
-        print("- Asking for inputs:\nTool result:\n", tool_result, "\nMetadata:\n", metadata, '\n', '_'*100)
-
+        print("_"*20)
+        print("- Asking for inputs:\nTool result:\n", tool_result, "\nMetadata:\n", metadata)
+        print("_"*20)
+        
         return tool_result, metadata
     
-    async def run_tools(self, tools_list: list[str], inputs: dict[str, str]) -> tuple[str | None, dict[str, str]]:
+    async def run_tools(self, tools_list: list[str], inputs: dict[str, str] = None) -> tuple[str | None, dict[str, str]]:
         """
         Run the specified tools with given inputs.
 
         Args:
         - tools_list (list): List of tools to be executed.
-        - inputs (dict): Dictionary containing inputs for the tools.
+        - inputs (dict): Dictionary containing inputs for the first tool.
 
         Returns:
         - Tuple containing output of the tool and metadata dictionary.
@@ -300,7 +294,7 @@ class Tools():
             # Check if inputs are provided.
             if inputs:
                 try:
-                    # Execute the tool with the provided inputs.
+                    # Try to execute the tool with the provided inputs.
                     tool_result = tool['function_name'](**inputs)
                     metadata = {
                         "type": "tool_result",
@@ -313,7 +307,7 @@ class Tools():
                 except Exception as e:
 
                     # If the tool fails to execute, create a message with description of an error and
-                    # metadata with input request to get correct input data from user an rerun the tool
+                    # metadata with input request to get correct input data from user and rerun the tool.
                     print("Recived exception running tool:\n", e, '\n', 'Inputs:\n', inputs)
                     tool_result = await self.describe_input_error(tool, inputs, e)
                     metadata = {
@@ -325,7 +319,7 @@ class Tools():
                     return tool_result, metadata
             else:
                 # If inputs are not provided, ask for inputs.
-                tool_result, metadata = self.ask_for_inputs(tool_name = tools_list[0], missing_inputs = tool[inputs])
+                tool_result, metadata = self.ask_for_inputs(tool_name = tool['name'], missing_inputs = tool["inputs"])
                 return tool_result, metadata
         else:
             # If the tool does not need inputs, execute the tool without inputs.
@@ -360,7 +354,7 @@ class Tools():
         if extracted_tools:
 
             # Check if the first extracted tool needs inputs.
-            if self.tool_needs_input(extracted_tools[0]):
+            if self.get_tool(extracted_tools[0])['needs_inputs']:
 
                 # If inputs extraction is on.
                 if extract_inputs is True:
@@ -391,9 +385,10 @@ class Tools():
                 # If inputs extraction turned off, create message and metadata asking for inputs.
                 else:
                     tool = self.get_tool(extracted_tools[0])
-                    inputs = {}
-                    missing_inputs = tool['inputs']
-                    tool_result, metadata = self.ask_for_inputs(extracted_tools[0], inputs, missing_inputs)
+                    inputs = None
+                    missing_inputs = tool['required_inputs']
+                    
+                    tool_result, metadata = self.ask_for_inputs(extracted_tools[0], missing_inputs, inputs)
                     return tool_result, metadata
                 
             # If the tool does not need inputs, run the tool without inputs.
@@ -439,15 +434,15 @@ class Tools():
 
         return response
     
-    def tool_needs_input(self, tool_name:str):
-        """
-        Small helper function to check if a given tool requires input based on its name.
+    # def tool_needs_input(self, tool_name:str):
+    #     """
+    #     Small helper function to check if a given tool requires input based on its name.
 
-        Args:
-        - tool_name (str): Name of the tool to check.
+    #     Args:
+    #     - tool_name (str): Name of the tool to check.
 
-        Returns:
-        - True if the tool requires input, False otherwise.
-        """
-        tool = self.get_tool(tool_name)
-        return tool['needs_inputs']
+    #     Returns:
+    #     - True if the tool requires input, False otherwise.
+    #     """
+    #     tool = self.get_tool(tool_name)
+    #     return tool['needs_inputs']
