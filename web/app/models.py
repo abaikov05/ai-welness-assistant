@@ -22,14 +22,14 @@ class User_settings(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     
     responder_personality = models.TextField(max_length=2500, default="Caring and helpful assistant.")
-    responder_gpt_model = models.TextField(default='gpt-3.5-turbo')
+    responder_gpt_model = models.TextField(default='gpt-4o-mini')
     messages_for_input_extraction = models.PositiveSmallIntegerField(default=3)
 
-    profiler_gpt_model = models.TextField(default='gpt-3.5-turbo')
+    profiler_gpt_model = models.TextField(default='gpt-4o-mini')
     messages_till_profile_update = models.PositiveSmallIntegerField(default=5)
     messages_for_profile_update = models.PositiveSmallIntegerField(default=5)
     
-    journal_gpt_model = models.TextField(default='gpt-3.5-turbo')
+    journal_gpt_model = models.TextField(default='gpt-4o-mini')
     messages_till_journal_update = models.PositiveSmallIntegerField(default=5)
     messages_for_journal_update = models.PositiveSmallIntegerField(default=5)
 

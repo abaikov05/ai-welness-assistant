@@ -5,6 +5,8 @@ import json
 # Import all tool functions
 from .Tools.tools_functions import *
 # FIXME Names of tools in browser
+
+# rename "found_inputs" to "inputs". "inputs" should contain all inputs and if there is no input than {"input1": None} 
 class Tools():
     """
     This class ir core component for managing and executing tools within the AI Wellbeing Assistant.
@@ -130,23 +132,21 @@ class Tools():
     async def extract_inputs(self, tool_name: str, chat_history: str) -> tuple[dict[str, str | None], list[str | None]] | None:
         """
         Extracts inputs for a specified tool from the conversation and returns a dictionary of inputs and list of missing inputs.
-
+        This function uses the OpenAI GPT model to analyze the conversation and extract inputs for a specified tool function.
+        
         Args:
         - tool_name (str): The name of the tool for which inputs are to be extracted.
         - chat_history (str): The conversation history.
 
         Returns:
-        (dict, list) or None: A tuple containing a dictionary of extracted inputs and a list of missing required inputs.
-        Returns None if no response or an error occurred during input extraction.
+        (dict | None, list): A tuple containing a dictionary of extracted inputs (or None) and a list of missing required inputs.
 
-        This function uses the OpenAI GPT model to analyze the conversation and extract inputs for a specified tool function.
-
-        If an input has '(optional)' in the description, it can be empty.
+        - If an input has '(optional)' in the description, it can be empty and will be None in inputs dictionary.
         
-        If there are no inputs in user messages or a required input is missing, the function returns a tuple with an empty dictionary
+        - If there are no inputs in user messages or a required input is missing, the function returns a tuple with None
         and a list of missing required inputs.
 
-        If no response or an error occurs during input extraction, the function returns None.
+        - If no response or an error occurs during input extraction, the function returns None for inputs and a list of missing required inputs.
         """
         # Get information about the tool
         tool = self.get_tool(tool_name)
@@ -211,6 +211,7 @@ class Tools():
                             if input == required_input:
                                 print('Required input not found! -', input)
                                 missing_inputs.append(input)
+                                
                         # Set the input value to None if input is optional.
                         inputs[input] = None
 
@@ -223,7 +224,6 @@ class Tools():
                 # Return None as tool inputs and tool's required inputs as missing
                 missing_inputs = tool['required_inputs']
                 
-                # FIXME It simply returns None if error in format. Is it OK?
                 return None, missing_inputs
         else:
             # If GPT did not find any inputs, print a message.

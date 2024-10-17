@@ -1,0 +1,11 @@
+[
+    {
+        'name': 'test_tool',
+        'description': 'Test tool that throws exeption',
+        'function_name': test_tool,
+        'needs_inputs': True,
+        'inputs': ['exeption'],
+        'required_inputs': [],
+        'inputs_description': 'exeption - throw exeption True or False'
+    }
+]

@@ -130,9 +130,14 @@ class Responder:
         # Process journal update results if the journal update task was created.
         if task_list.get('journal_update_task'):
             journal_result = results.pop(0)
-            journal, updates_count, journal_date, journal_used_tokens =  journal_result
+            # journal, updates_count, journal_date, journal_used_tokens =  journal_result
+            journal, updates_count, journal_used_tokens =  journal_result
 
-            journal_update = journal, updates_count, journal_date
+            if not journal or updates_count:
+                journal_update = None
+            else:
+                # journal_update = journal, updates_count, journal_date
+                journal_update = journal, updates_count
             print("Journal update: \n",journal_update, '\n' , '_'*100)
 
             if journal_used_tokens:

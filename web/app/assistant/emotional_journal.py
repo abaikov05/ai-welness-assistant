@@ -5,7 +5,7 @@ from textwrap import dedent
 import json
 
 class EmotionalJournal():
-    def __init__(self, journal: str, updates_count: int, journal_date: date, current_date: date, gpt_model: str) -> None:
+    def __init__(self, journal: str, updates_count: int, gpt_model: str) -> None:
         """
         Initialize the EmotionalJournal class with necessary attributes.
 
@@ -16,7 +16,7 @@ class EmotionalJournal():
         - current_date (class): Current date.
 
         """
-        self.journal_date = journal_date
+        # self.journal_date = journal_date
 
         # Why the fuck I need this if it gets of creates current date journal in consumers?
         
@@ -56,8 +56,6 @@ class EmotionalJournal():
             ...
         }""")
         
-        # TODO Chat history prompt does not contain names of senders
-        
         # Prase chat history list to string
         chat_history = '\n'.join(chat_history)
         # Create a prompt with chat history
@@ -87,22 +85,22 @@ class EmotionalJournal():
                         
                 # If the response is empty dictionary don't update the journal
                 if len(response) == 0:
-                    return None, None, None, token_usage
+                    return None, None, token_usage
                 
             # Handle the case where the response has an unexpected format
             except:
                 print("Wrong emotional journal format from GPT")
-                return None, None, None, token_usage
+                return None, None, token_usage
         
         # Handle the case where GPT did not provide any response
         else:
             # Check if there were token usage despite no response
             if token_usage is not None:
                 print("GPT tried to update emotional journal but no changes were made!")
-                return None, None, None, token_usage
+                return None, None, token_usage
             
             # Return None for all values if there was no response and token usage
-            return None, None, None, None
+            return None, None, None
         
         # Increment the count of updates made to the emotional journal
         self.updates_count += 1
@@ -110,7 +108,7 @@ class EmotionalJournal():
         # If it is the first update, simply save response as a journal.
         if self.updates_count <= 1:
             self.journal = response
-            return self.journal, self.updates_count, self.journal_date, token_usage
+            return self.journal, self.updates_count, token_usage
         else:
             # Update avarage scores of emotions that are not in response
             for key, value in self.journal.items():
@@ -124,4 +122,4 @@ class EmotionalJournal():
                 else:
                     self.journal[key] = round(float(value)/self.updates_count, 2)
 
-        return self.journal, self.updates_count, self.journal_date, token_usage
+        return self.journal, self.updates_count, token_usage

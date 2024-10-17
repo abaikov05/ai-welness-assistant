@@ -78,3 +78,9 @@ def calculator(expression):
         # Handle exceptions based on your needs
         print(f"Error evaluating expression: {e}")
         return None
+    
+def test_tool(exeption = False):
+    if exeption:
+        raise Exception('Test Exception')
+    
+    return

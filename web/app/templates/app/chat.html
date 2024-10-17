@@ -26,15 +26,10 @@
                                     <label for="profiler-gpt-select" class="form-label">GPT model</label>
                                     <select class="form-select" aria-label="Default select example"
                                         id="profiler-gpt-select">
+                                        <!-- TODO Change models -->
                                         <option value="0" id="profiler-selected-model" selected></option>
-                                        <option value="1">GPT-3.5 Turbo Instruct</option>
-                                        <option value="2">Updated GPT-3.5 Turbo</option>
-                                        <option value="3">GPT-3.5 Turbo with 16k context</option>
-                                        <option value="4">GPT-3.5 Turbo</option>
-                                        <option value="5">GPT-4 Turbo</option>
-                                        <option value="6">Updated GPT-4 with 32k context</option>
-                                        <option value="7">GPT-4 with 32k context</option>
-                                        <option value="8">GPT-4</option>
+                                        <option value="1">GPT-4o</option>
+                                        <option value="2">GPT-4o mini (Smaller and cheaper version)</option>
                                     </select>
                                     <label for="till-profile-update" class="form-label mt-3">Messages till profile update</label>
                                     <div class="d-flex flex-row">
@@ -85,14 +80,8 @@
                                     <select class="form-select" aria-label="Default select example"
                                         id="journal-gpt-select">
                                         <option value="0" id="journal-selected-model" selected></option>
-                                        <option value="1">GPT-3.5 Turbo Instruct</option>
-                                        <option value="2">Updated GPT-3.5 Turbo</option>
-                                        <option value="3">GPT-3.5 Turbo with 16k context</option>
-                                        <option value="4">GPT-3.5 Turbo</option>
-                                        <option value="5">GPT-4 Turbo</option>
-                                        <option value="6">Updated GPT-4 with 32k context</option>
-                                        <option value="7">GPT-4 with 32k context</option>
-                                        <option value="8">GPT-4</option>
+                                        <option value="1">GPT-4o</option>
+                                        <option value="2">GPT-4o mini (Smaller and cheaper version)</option>
                                     </select>
                                     <label for="till-journal-update" class="form-label mt-3">Messages till journal
                                         update</label>
@@ -146,14 +135,8 @@
                                     <select class="form-select gpt-select" aria-label="Default select example"
                                         id="responder-gpt-select">
                                         <option value="0" id="responder-selected-model" selected></option>
-                                        <option value="1">GPT-3.5 Turbo Instruct</option>
-                                        <option value="2">Updated GPT-3.5 Turbo</option>
-                                        <option value="3">GPT-3.5 Turbo with 16k context</option>
-                                        <option value="4">GPT-3.5 Turbo</option>
-                                        <option value="5">GPT-4 Turbo</option>
-                                        <option value="6">Updated GPT-4 with 32k context</option>
-                                        <option value="7">GPT-4 with 32k context</option>
-                                        <option value="8">GPT-4</option>
+                                        <option value="1">GPT-4o</option>
+                                        <option value="2">GPT-4o mini (Smaller and cheaper version)</option>
                                     </select>
                                     <label for="messages-for-input-extaction" class="form-label mt-3">Messages for input extraction</label>
                                     <div class="d-flex flex-row">
@@ -214,7 +197,7 @@
             <div class="container mt-auto mb-3">
                 <div class="row">
                     <div id="chat-container" class="col-md-10 mx-auto">
-                        <!-- Here are all the chat messages -->
+                        <!-- Here are all chat messages -->
                     </div>
                 </div>
                 <div class="row mt-3">
@@ -426,26 +409,13 @@ profile_save_btn.addEventListener('click', (e) => {
 // For settings
 const modelValMapping = {
     0: null,
-    1: 'gpt-3.5-turbo-instruct',
-    2: 'gpt-3.5-turbo-1106',
-    3: 'gpt-3.5-turbo-16k',
-    4: 'gpt-3.5-turbo',
-    5: 'gpt-4-1106-preview',
-    6: 'gpt-4-32k-0613',
-    7: 'gpt-4-32k',
-    8: 'gpt-4',
+    1: 'gpt-4o',
+    2: 'gpt-4o-mini',
 };
 // Map for proper display of GPT models in select inputs.
 const modelMapping = {
-    'gpt-3.5-turbo-instruct': 'GPT-3.5 Turbo Instruct',
-    'gpt-3.5-turbo-1106': 'Updated GPT-3.5 Turbo',
-    'gpt-3.5-turbo-16k': 'GPT-3.5 Turbo with 16k context',
-    'gpt-3.5-turbo': 'GPT-3.5 Turbo',
-
-    'gpt-4-1106-preview': 'GPT-4 Turbo',
-    'gpt-4-32k-0613': 'Updated GPT-4 with 32k context',
-    'gpt-4-32k': 'GPT-4 with 32k context',
-    'gpt-4': 'GPT-4',
+    'gpt-4o': 'GPT-4o',
+    'gpt-4o-mini': 'GPT-4o-mini (Smaller and cheaper version)',
 };
 
 // For user profile settings

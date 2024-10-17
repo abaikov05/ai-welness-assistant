@@ -94,7 +94,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
         try:
             # Attempt to parse incoming JSON data
             text_data_json = json.loads(text_data)
+            print("_"*20)
             print("Socket recived:" ,text_data_json)
+            print("_"*20)
         except:
             print("Socket recived wrong payload format")
             return
@@ -329,7 +331,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             try:
                 responder_gpt_model = text_data_json['responder_gpt_model']
                 responder_personality = text_data_json['responder_personality']
-                msg_for_input = text_data_json['messages_for_input_extraction']
+                msg_for_input = int(text_data_json['messages_for_input_extraction'])
 
             except Exception as e:
                 await self.send(text_data=json.dumps({
@@ -442,7 +444,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             if metadata:
                 if metadata.get('type') == "input_request":
-
+                    print("_"*20)
+                    (f"- Input request :\nMetadata:\n{metadata}")
+                    print("_"*20)
                     await self.send(text_data=json.dumps(metadata))
 
                     return
@@ -526,8 +530,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         emotional_journal = EmotionalJournal(
             journal = user_emotional_journal.journal,
             updates_count = user_emotional_journal.updates_count,
-            journal_date = user_emotional_journal.date,
-            current_date = current_date,
             gpt_model = user_settings.journal_gpt_model
         )
 
@@ -579,10 +581,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
         print("Responder used tokens: ", responder.total_tokens_used)
         tokens_used = responder.total_tokens_used
         for module in tokens_used:
-            if tokens_used[module]:
+            if len(tokens_used[module]) != 0 :
                 if tokens_used[module]['total_tokens'] != 0:
                     total_cost = Decimal(0)
                     if module == 'Tools':
+                        print(f"\nModule: {module, tokens_used[module]}\n")
                         total_cost += Decimal(tokens_used[module]['prompt_tokens']/1000 * GPT_MODELS_PRICING[assistant_settings.responder_gpt_model]['input'])
                         total_cost += Decimal(tokens_used[module]['completion_tokens']/1000 * GPT_MODELS_PRICING[assistant_settings.responder_gpt_model]['output'])
                     elif module == 'Profiler':
@@ -607,7 +610,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         if metadata:
             if metadata.get('type') == "input_request":
-
+                print('!'*100, '\nSending input request:\n', json.dumps(metadata, indent=2))
                 await self.send(text_data=json.dumps(metadata))
 
                 if profile:
@@ -615,7 +618,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     await user_profile_object.asave()
 
                 if journal:
-                    journal_text, updates_count, date = journal
+                    # journal_text, updates_count, date = journal
+                    journal_text, updates_count = journal
 
                     user_emotional_journal.journal = json.dumps(journal_text)
                     user_emotional_journal.updates_count = updates_count
@@ -639,7 +643,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             # await profile_update.asave()
 
         if journal:
-            journal_text, updates_count, date = journal
+            # journal_text, updates_count, date = journal
+            journal_text, updates_count = journal
             user_emotional_journal.journal = json.dumps(journal_text)
             user_emotional_journal.updates_count = updates_count
 
