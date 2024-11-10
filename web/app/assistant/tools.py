@@ -126,7 +126,7 @@ class Tools():
             if tool['name'] == tool_name:
                 return tool
             
-        if TOOLS_DEBUG: print(f'Tool "{tool_name}" not found!')    
+        if TOOLS_DEBUG: print(f"Tool '{tool_name}' not found!")    
         return None
     
     async def extract_inputs(self, tool_name: str, chat_history: str) -> tuple[dict[str, str | None], list[str | None]] | None:
@@ -265,9 +265,7 @@ class Tools():
         tool_result = None
         
         # Print information for debugging.
-        print("_"*20)
         if TOOLS_DEBUG: print(f"{'_'*20}\nAsking for inputs:\nTool result:\n{tool_result}\nMetadata:\n{metadata}\n{'_'*20}")
-        print("_"*20)
         
         return tool_result, metadata
     

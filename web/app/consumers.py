@@ -98,7 +98,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             # Attempt to parse incoming JSON data
             text_data_json = json.loads(text_data)
             
-            if CONSUMERS_DEBUG:print(f"{"_"*20}\nSocket recived:\n{text_data_json}\n{"_"*20}")
+            if CONSUMERS_DEBUG:print(f"{'_'*20}\nSocket recived:\n{text_data_json}\n{'_'*20}")
 
         except:
             print("Socket recived wrong payload format")
@@ -112,7 +112,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             user_profile = await User_profile.objects.aget(user=user)
             settings = await User_settings.objects.aget(user=user)
 
-            if CONSUMERS_DEBUG:print(f"{"_"*20}Profile request sent\nProfile:\n{user_profile.content}\n{"_"*20}")
+            if CONSUMERS_DEBUG:print(f"{'_'*20}Profile request sent\nProfile:\n{user_profile.content}\n{'_'*20}")
             # Send user profile data to the client
             await self.send(text_data=json.dumps({
                 'type':'user_profile',
@@ -223,7 +223,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             settings = await User_settings.objects.aget(user=user)
 
-            if CONSUMERS_DEBUG:print(f"{"_"*20}\nJournal request sent\nJournals:\n{journals}\n{'_'*20}")
+            if CONSUMERS_DEBUG:print(f"{'_'*20}\nJournal request sent\nJournals:\n{journals}\n{'_'*20}")
             await self.send(text_data=json.dumps({
                 'type':'user_journal',
                 'journals': journals,
@@ -401,7 +401,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         # Handle user inputs for tool that was missing inputs.  
         if text_data_json.get('type') == 'inputs':
-            if CONSUMERS_DEBUG:print(f'{"_"*20}\nInputs recived by socket:{text_data_json}{"_"*20}')
+            if CONSUMERS_DEBUG:print(f"{'_'*20}\nInputs recived by socket:{text_data_json}{'_'*20}")
 
             tool = text_data_json['tool']
             inputs = text_data_json['inputs']
@@ -446,13 +446,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             if metadata:
                 if metadata.get('type') == "input_request":
-                    if CONSUMERS_DEBUG: print(f"{"_"*20}\nInput request\nMetadata:\n{metadata}\n{"_"*20}")
+                    if CONSUMERS_DEBUG: print(f"{'_'*20}\nInput request\nMetadata:\n{metadata}\n{'_'*20}")
 
                     await self.send(text_data=json.dumps(metadata))
 
                     return
                 else:
-                    if CONSUMERS_DEBUG:print(f"{"_"*20}\nResponse with recived inputs:\n{response}\n- Metadata:\n{metadata}\n{'_'*20}")
+                    if CONSUMERS_DEBUG:print(f"{'_'*20}\nResponse with recived inputs:\n{response}\n- Metadata:\n{metadata}\n{'_'*20}")
                     await self.send(text_data=json.dumps({
                         'type':'ai_response',
                         'ai_message': response

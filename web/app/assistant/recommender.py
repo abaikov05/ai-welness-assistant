@@ -64,10 +64,9 @@ class RecommerdationTree:
         median = len(data) // 2
         
         if RECOMMENDER_DEBUG:
-            # print(f"Distance  to {test}: ", euclidean_distance(test, data[median].vector))
             for n,i in enumerate(data):
                 if i == data[median]:
-                    print(f"{n}: ",i, f'<{"-"*5} median')
+                    print(f"{n}: ",i, f"<{'-'*5} median")
                 else:
                     print(f"{n}: ",i)
             print("Depth: ", depth,'\n',"_"*10)
@@ -145,7 +144,7 @@ class RecommerdationTree:
             if far_side: print(f"Far side: {far_side.data.vector}")
             else: print(f"Far side side: NONE")
             print(f"Heap: {self.nearest_heap}")
-            print('_'*10)
+            print('-'*10)
             
         # Recurse on the closer side
         self._nearest_neighbors(close_side, target, depth + 1)
