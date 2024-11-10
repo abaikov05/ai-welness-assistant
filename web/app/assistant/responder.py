@@ -2,7 +2,7 @@ from .moderation import Moderation
 from .tools import Tools
 from .user_profile import Profile
 from .emotional_journal import EmotionalJournal
-from .settings import AssistantSettings, CHAT_HISTORY_MESSAGES_FOR_RESPONDER
+from .settings import AssistantSettings, CHAT_HISTORY_MESSAGES_FOR_RESPONDER, RESPONDER_DEBUG
 
 from textwrap import dedent
 from .helpers import openai_chat_request
@@ -64,7 +64,7 @@ class Responder:
         flagged, flagged_categories = self.moderation.moderate(user_message = user_message)
         if flagged:
             response =  f"Ill content of message. Categories:{flagged_categories}"
-            print(response)
+            if RESPONDER_DEBUG: print(response)
 
             metadata, profile_update, journal_update = None, None, None
 
@@ -168,7 +168,7 @@ class Responder:
         system_message += '\n' + personality_addition(self.settings.responder_personality)
 
         prompt += responder_prompt(chat_history = '\n'.join(self.chat_history[-CHAT_HISTORY_MESSAGES_FOR_RESPONDER:]),  user_message = user_message)
-        print(f"- _Responder_ Sysytem prompt:\n{system_message}\n- Prompt:\n{prompt}\n{'_'*100}")
+        if RESPONDER_DEBUG: print(f"{'_'*20}\nResponder\nSysytem prompt:\n{system_message}\nPrompt:\n{prompt}\n{'_'*20}")
 
         # Request a response from the OpenAI GPT model.
         response, responder_used_tokens = await openai_chat_request(
@@ -180,7 +180,7 @@ class Responder:
         if responder_used_tokens:
             self.total_tokens_used['Responder'] = responder_used_tokens
 
-        print(f"- !!! Final results:\nResponse:{response}\nMetadata:{metadata}\nProfile:{profile_update}\nJournal:{journal_update}\n{'_'*100}")
+        if RESPONDER_DEBUG: print(f"{'_'*20}\n!!! Final results:\nResponse:{response}\nMetadata:{metadata}\nProfile:{profile_update}\nJournal:{journal_update}\n{'_'*100}")
         return response, metadata, profile_update, journal_update
 
     async def handle_user_inputs(self, tool: str, inputs: dict[str, str]) -> tuple[str, dict[str, str]]:
@@ -198,11 +198,8 @@ class Responder:
         flagged, flagged_categories = self.moderation.moderate(user_message=str(inputs))
         if flagged:
             message = f"Ill content of message. Categories:{flagged_categories}"
-            print(message)
+            if RESPONDER_DEBUG: print(message)
             return message, None
-        # # Remove CSRF token from inputs.
-        # if inputs.get('csrfmiddlewaretoken'):
-        #     del inputs['csrfmiddlewaretoken']
 
         tools_result, metadata = await self.tools.run_tools([tool], inputs)
 
@@ -218,13 +215,13 @@ class Responder:
         system_message = responder_system_message('\n'.join(self.user_profile.user_profile))
         prompt += responder_prompt('\n'.join(self.chat_history[-CHAT_HISTORY_MESSAGES_FOR_RESPONDER:]))
 
-        print(f"{'_'*100}\nSystem message:\n{system_message}\nPrompt:\n{prompt}")
 
         response, responder_used_tokens = await openai_chat_request(
             prompt = prompt,
             system = system_message,
             model = self.settings.responder_gpt_model
         )
+        if RESPONDER_DEBUG: print(f"{'_'*20}Responder handeles inputs\nSystem message:\n{system_message}\nPrompt:\n{prompt}\nResponse:\n{response}\n{'_'*20}")
 
         if responder_used_tokens:
             self.total_tokens_used['Responder'] = responder_used_tokens

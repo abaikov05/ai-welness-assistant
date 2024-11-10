@@ -4,6 +4,8 @@ import json
 
 # Import all tool functions
 from .Tools.tools_functions import *
+
+from .settings import TOOLS_DEBUG
 # FIXME Names of tools in browser
 
 # rename "found_inputs" to "inputs". "inputs" should contain all inputs and if there is no input than {"input1": None} 
@@ -82,9 +84,7 @@ class Tools():
             self.total_tokens_used = {key: self.total_tokens_used[key] + token_usage[key] for key in self.total_tokens_used}
 
         # Debugging information.
-        print("_"*20)
-        print("- Tool extraction:\n" ,prompt, '\n', system_message, '\n', response)
-        print("_"*20)
+        if TOOLS_DEBUG: print(f"{'_'*20}\nTool extraction:\n{prompt}\n{system_message}\n{response}\n{'_'*20}")
 
         # Process the GPT response if it is not empty. If responce is empty, GPT not found available tools to use.
         if response and response.strip() != '':
@@ -105,11 +105,11 @@ class Tools():
             if valid_tools:
                 return valid_tools
             else:
-                print('GPT tied to extract tools but found no valid tools to use')
+                if TOOLS_DEBUG: print('GPT tied to extract tools but found no valid tools to use')
                 return None
         
         else:
-            print('GPT tied to extract tools but found no tools to use')
+            if TOOLS_DEBUG: print('GPT tied to extract tools but found no tools to use')
             return None
         
     def get_tool(self, tool_name: str) -> dict:
@@ -126,7 +126,7 @@ class Tools():
             if tool['name'] == tool_name:
                 return tool
             
-        print(f'Tool "{tool_name}" not found!')    
+        if TOOLS_DEBUG: print(f'Tool "{tool_name}" not found!')    
         return None
     
     async def extract_inputs(self, tool_name: str, chat_history: str) -> tuple[dict[str, str | None], list[str | None]] | None:
@@ -183,9 +183,7 @@ class Tools():
             self.total_tokens_used = {key: self.total_tokens_used[key] + token_usage[key] for key in self.total_tokens_used}
 
         # Debug information.
-        print("_"*20)
-        print("- Input extraction:\n", prompt, system_message, response)
-        print("_"*20)
+        if TOOLS_DEBUG: print(f"{'_'*20}\nInput extraction:\n{prompt}\n{system_message}\n{response}\n{'_'*20}")
 
         # Process the response to extract inputs.
         if response and response.strip() != '':
@@ -209,7 +207,7 @@ class Tools():
                         for required_input in tool['required_inputs']:
                             # If input is required, add the input to the list of missing inputs.
                             if input == required_input:
-                                print('Required input not found! -', input)
+                                if TOOLS_DEBUG: print('Required input not found! -', input)
                                 missing_inputs.append(input)
                                 
                         # Set the input value to None if input is optional.
@@ -227,7 +225,7 @@ class Tools():
                 return None, missing_inputs
         else:
             # If GPT did not find any inputs, print a message.
-            print("GPT did not find any inputs!")
+            if TOOLS_DEBUG: print("GPT did not find any inputs!")
             missing_inputs = tool['required_inputs']
             # Return None as tool inputs and tool's required inputs as missing
             return None, missing_inputs
@@ -268,7 +266,7 @@ class Tools():
         
         # Print information for debugging.
         print("_"*20)
-        print("- Asking for inputs:\nTool result:\n", tool_result, "\nMetadata:\n", metadata)
+        if TOOLS_DEBUG: print(f"{'_'*20}\nAsking for inputs:\nTool result:\n{tool_result}\nMetadata:\n{metadata}\n{'_'*20}")
         print("_"*20)
         
         return tool_result, metadata
@@ -308,7 +306,7 @@ class Tools():
 
                     # If the tool fails to execute, create a message with description of an error and
                     # metadata with input request to get correct input data from user and rerun the tool.
-                    print("Recived exception running tool:\n", e, '\n', 'Inputs:\n', inputs)
+                    if TOOLS_DEBUG: print("Recived exception running tool:\n", e, '\n', 'Inputs:\n', inputs)
                     tool_result = await self.describe_input_error(tool, inputs, e)
                     metadata = {
                         "type": "input_request",
@@ -398,7 +396,7 @@ class Tools():
             
         # If no tools are detected, return None, None.
         else:
-            print("No tools detected!")
+            if TOOLS_DEBUG: print("No tools detected!")
             return None, None
     
     async def describe_input_error(self, tool: dict, inputs: dict, exeption: str):

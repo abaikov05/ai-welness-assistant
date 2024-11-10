@@ -18,6 +18,9 @@ from .models import Message, Chat, User_profile, User_settings, User_emotional_j
 from django.utils import timezone
 from datetime import date
 
+# TODO Check balance before generating response
+# TODO Include emotinal journal in Responders prompt
+# TODO Welcome messages on last_login or last_message_time
 
 class ChatConsumer(AsyncWebsocketConsumer):
     """
@@ -94,9 +97,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
         try:
             # Attempt to parse incoming JSON data
             text_data_json = json.loads(text_data)
-            print("_"*20)
-            print("Socket recived:" ,text_data_json)
-            print("_"*20)
+            
+            if CONSUMERS_DEBUG:print(f"{"_"*20}\nSocket recived:\n{text_data_json}\n{"_"*20}")
+
         except:
             print("Socket recived wrong payload format")
             return
@@ -109,7 +112,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             user_profile = await User_profile.objects.aget(user=user)
             settings = await User_settings.objects.aget(user=user)
 
-            print(f"- Profile request sent\nProfile:{user_profile.content}\n{'_'*100}")
+            if CONSUMERS_DEBUG:print(f"{"_"*20}Profile request sent\nProfile:\n{user_profile.content}\n{"_"*20}")
             # Send user profile data to the client
             await self.send(text_data=json.dumps({
                 'type':'user_profile',
@@ -135,7 +138,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             moder = Moderation()
             flagged, category = moder.moderate(profile)
             if flagged:
-                print("Flagged: ", flagged)
+                if CONSUMERS_DEBUG: print("Flagged: ", flagged)
                 await self.send(text_data=json.dumps({
                     'type':'ill_profile_content'
                 }))
@@ -220,7 +223,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             settings = await User_settings.objects.aget(user=user)
 
-            print(f"- Journal request sent\nJournals:{journals}\n{'_'*100}")
+            if CONSUMERS_DEBUG:print(f"{"_"*20}\nJournal request sent\nJournals:\n{journals}\n{'_'*20}")
             await self.send(text_data=json.dumps({
                 'type':'user_journal',
                 'journals': journals,
@@ -267,7 +270,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }))
                 return
             
-            print(msg_for_update, msg_till_update)
             if journal_gpt_model != None:
                 if journal_gpt_model not in AVAILABLE_GPT_MODELS:
                     await self.send(text_data=json.dumps({
@@ -399,7 +401,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         # Handle user inputs for tool that was missing inputs.  
         if text_data_json.get('type') == 'inputs':
-            print(f'{"_"*100}\n- Inputs recived by socket', text_data_json)
+            if CONSUMERS_DEBUG:print(f'{"_"*20}\nInputs recived by socket:{text_data_json}{"_"*20}')
 
             tool = text_data_json['tool']
             inputs = text_data_json['inputs']
@@ -444,14 +446,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             if metadata:
                 if metadata.get('type') == "input_request":
-                    print("_"*20)
-                    (f"- Input request :\nMetadata:\n{metadata}")
-                    print("_"*20)
+                    if CONSUMERS_DEBUG: print(f"{"_"*20}\nInput request\nMetadata:\n{metadata}\n{"_"*20}")
+
                     await self.send(text_data=json.dumps(metadata))
 
                     return
                 else:
-                    print(f"- Response with recived inputs:\n{response}\n- Metadata:\n{metadata}\n{'_'*100}")
+                    if CONSUMERS_DEBUG:print(f"{"_"*20}\nResponse with recived inputs:\n{response}\n- Metadata:\n{metadata}\n{'_'*20}")
                     await self.send(text_data=json.dumps({
                         'type':'ai_response',
                         'ai_message': response
@@ -512,19 +513,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
         message_count = await Message.objects.filter(chat=chat).acount()
-        print("Message count:", message_count)
+        if CONSUMERS_DEBUG: print("Message count:", message_count)
 
         user_profile_object, profile_created = await User_profile.objects.aget_or_create(user=user)
         if profile_created:
-            print('New user profile created!')
+            if CONSUMERS_DEBUG:print('New user profile created!')
         user_profile = user_profile_object.content
-        print("User profile: ", user_profile)
+        if CONSUMERS_DEBUG: print("User profile: ", user_profile)
 
         user_settings = await User_settings.objects.aget(user=user)
 
         user_emotional_journal, journal_created = await User_emotional_journal.objects.aget_or_create(user=user, date=current_date)
         if journal_created:
-            print('New emotional journal created!')
+            if CONSUMERS_DEBUG: print('New emotional journal created!')
         user_balance = await User_balance.objects.aget(user=user)
 
         emotional_journal = EmotionalJournal(
@@ -534,8 +535,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
 
-        print(
-            "User settings: ",
+        if CONSUMERS_DEBUG: print(
+            f"{'_'*20}\nUser settings: ",
             user_settings.responder_gpt_model,
             user_settings.responder_personality,
             user_settings.profiler_gpt_model,
@@ -543,13 +544,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
             user_settings.messages_for_profile_update,
             user_settings.messages_till_profile_update,
             user_settings.messages_for_input_extraction,
-            user_settings.messages_till_journal_update
+            user_settings.messages_till_journal_update, {'_'*20}
         )
 
         new_message = Message(chat=chat, text=user_message)
         await new_message.asave()
         # asyncio.gather()
-        
+        # TODO async gather info from db
         assistant_settings = AssistantSettings(
             responder_gpt_model = user_settings.responder_gpt_model,
             responder_personality = user_settings.responder_personality,
@@ -578,7 +579,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         text, metadata, profile, journal = response
 
-        print("Responder used tokens: ", responder.total_tokens_used)
+        if CONSUMERS_DEBUG: print("Responder used tokens: ", responder.total_tokens_used)
         tokens_used = responder.total_tokens_used
         for module in tokens_used:
             if len(tokens_used[module]) != 0 :
@@ -610,7 +611,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         if metadata:
             if metadata.get('type') == "input_request":
-                print('!'*100, '\nSending input request:\n', json.dumps(metadata, indent=2))
+                if CONSUMERS_DEBUG: print(f"{'_'*20}\nSending input request:\n{json.dumps(metadata, indent=2)}\n{'_'*20}", )
                 await self.send(text_data=json.dumps(metadata))
 
                 if profile:
@@ -654,7 +655,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         
     async def disconnect(self, close_code):
 
-        print("Socket disconnected with code:", close_code)
+        if CONSUMERS_DEBUG: print("Socket disconnected with code:", close_code)
         await self.close()
 
         return
@@ -684,12 +685,13 @@ async def get_chat_history(chat: Chat, limit: int, offset: int = 0, for_socket: 
     
     if reverse:
         chat_history.reverse()
-    print(f"Chat history in consumers:")
-    if for_socket:
-        print(chat_history)
-    else:
-        print('\n'.join(chat_history))
-    print('_'*100)
+    if CONSUMERS_DEBUG:
+        print(f"{'_'*20}\nChat history in consumers:")
+        if for_socket:
+            print(chat_history)
+        else:
+            print('\n'.join(chat_history))
+        print('_'*20)
     return chat_history
 
 async def get_emotional_journals(user: object, limit: int, offset: int = 0, for_socket: bool = False):
@@ -714,6 +716,6 @@ async def get_emotional_journals(user: object, limit: int, offset: int = 0, for_
 
 
     journals.reverse()
-    print(f"Journals data in consumers:", journals)
+    if CONSUMERS_DEBUG: print(f"{'_'*20}\nJournals data in consumers:\n", journals, '_'*20)
 
     return journals

@@ -1,7 +1,10 @@
-# Here are ajuastable settings 
+# Here are ajuastable settings
+
+# Enries to load per 1 request
 CHAT_MESSAGES_TO_LOAD_PER_REQUEST = 20
 EMOTIONAL_JOURNALS_TO_LOAD_PER_REQUEST = 4
 
+# At this time there are only 2 cost-efficient models
 AVAILABLE_GPT_MODELS = [
     'gpt-4o',
     'gpt-4o-mini',
@@ -11,26 +14,43 @@ GPT_MODELS_PRICING = {
     'gpt-4o':{'input': 0.0025, 'output': 0.01},
     'gpt-4o-mini':{'input': 0.00015, 'output': 0.0006},
 }
-
+# Responder constants
 MESSAGES_TO_PASS_TO_ASSISTANT = 21
-
 CHAT_HISTORY_MESSAGES_FOR_RESPONDER = 5
 
+# Profiler constants
 MIN_MESSAGES_FOR_PROFILE_UPDATE = 1
 MAX_MESSAGES_FOR_PROFILE_UPDATE = 10
 
 MIN_MESSAGES_TILL_PROFILE_UPDATE = 1
 MAX_MESSAGES_TILL_PROFILE_UPDATE = 21
-
+# Emotional journal constants
 MIN_MESSAGES_FOR_JOURNAL_UPDATE = 1
 MAX_MESSAGES_FOR_JOURNAL_UPDATE = 10
 
 MIN_MESSAGES_TILL_JOURNAL_UPDATE = 1
 MAX_MESSAGES_TILL_JOURNAL_UPDATE = 21
-
+# Tools constants 
 MIN_MESSAGES_FOR_INPUT_EXTACTION = 1
 MAX_MESSAGES_FOR_INPUT_EXTACTION = 10
 
+# Recommender
+RECOMMENDER_TREE_PATH = "web/app/assistant/Recommendations/recomendation_tree.pkl"
+RECOMMENDER_RECOMMENDATIONS_PATH = "web/app/assistant/Recommendations/recommendations.txt"
+RECOMMENDATION_CATEGORIES = [
+    "Sport", "Nutrition","Sleep", 
+    "Stress", "Mental Health", "Social", 
+    "Self-Care", "Motivation", "Resilience", 
+    "Body", "Mindfulness", "Positive Thinking"
+]
+
+# Debug options
+RECOMMENDER_DEBUG = True
+CONSUMERS_DEBUG = True
+TOOLS_DEBUG = True
+EMOTIONAL_JOURNAL_DEBUG = True
+RESPONDER_DEBUG = True
+PROFILE_DEBUG = True
 
 class AssistantSettings:
     """

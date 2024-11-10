@@ -2,7 +2,7 @@ import asyncio
 import openai
 # import tiktoken
 
-async def openai_chat_request(prompt=None, messages=None, system="You are a helpful assistant.", model="gpt-3.5-turbo-16k", max_retries=5, temperature=1, max_tokens=1000, timeout=20):
+async def openai_chat_request(prompt=None, messages=None, system="You are a helpful assistant.", model="gpt-4o-mini", max_retries=5, temperature=1, max_tokens=1000, timeout=20):
     """
     This function makes a chat request to OpenAI and returns the response and information about used tokens.
     In case of an error, or if the request takes longer than 'timeout' seconds, it retries up to 'max_retries' times with exponential backoff.

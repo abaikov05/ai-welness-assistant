@@ -3,6 +3,8 @@ from textwrap import dedent
 import os
 import json
 
+from .settings import PROFILE_DEBUG
+
 class Profile:
     """
     Represents a user profile and provides methods to generate and update the profile using GPT responses.
@@ -67,9 +69,9 @@ class Profile:
         + f"Last user message: {user_message}\n"
         + 'Remember format: {{"number": "Changed text of this element", "number": "Changed text of this element"}}')
 
-        print("- Profiler prompts:\n", system_message, prompt)
         response, token_usage = await openai_chat_request(prompt=prompt, system=system_message, temperature=0.8, model=self.gpt_model)
-        print("- Generated user prifile changes:", response, '\n', '_'*100)
+        
+        if PROFILE_DEBUG: print(f"{'_'*20}\nProfiler prompts:\nSystem:\n{system_message}\nPrompt\n{prompt}\nGenerated user prifile changes:\n{response}\n{'_'*20}")
 
         # Process and validate the response
         if response and response.strip() != '':
@@ -84,7 +86,7 @@ class Profile:
                 
                 return response, token_usage
             except Exception as e:
-                print("Error in generated user profile format", e)
+                if PROFILE_DEBUG: print("Error in generated user profile format", e)
                 return None, token_usage
         else:
             return None, None
@@ -104,13 +106,13 @@ class Profile:
         # Generate profile changes
         profile_changes, token_usage = await self.generate_user_profile(previous_messages=previous_messages, user_message=user_message)
 
-        print("Last profile:\n", self.profile)
+        if PROFILE_DEBUG: print("Last profile:\n", self.profile)
         # Apply profile changes if any
         if profile_changes is not None:
 
             for i in profile_changes: 
                 self.profile[i] = profile_changes[i]
-            print("New profile:\n", self.profile)
+            if PROFILE_DEBUG: print("New profile:\n", self.profile)
 
             # Transform profile dictionary to array and return it with token usage statistics
             profile_array = []
@@ -123,7 +125,7 @@ class Profile:
         else:
             # Handle the case when no profile changes made
             if token_usage is not None:
-                print("GPT tried to update profile but no changes were made!")
+                if PROFILE_DEBUG: print("GPT tried to update profile but no changes were made!")
                 return None, token_usage
 
             return None, None

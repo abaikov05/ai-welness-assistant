@@ -63,7 +63,7 @@ def news(key_words, category = None):
             category = category,
             language = 'en')
         # For GPT
-        result = "Tell user about these found articles. Mention source and link to an article." + str(top_headlines['articles'])
+        result = "Tell user about these found articles. Mention source and link to the article." + str(top_headlines['articles'])
         return result
     except Exception as e:
         print(f"Something went wrong while searching news: {e}")
