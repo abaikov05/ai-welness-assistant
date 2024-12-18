@@ -1,7 +1,7 @@
 from textwrap import dedent
 from .helpers import openai_chat_request
-
-import math, heapq, pickle
+from .settings import RECOMMENDATION_CATEGORIES, N_MAX_RECOMMENDATIONS
+import math, heapq, json
 
 from .settings import RECOMMENDER_DEBUG
 class Data:
@@ -31,7 +31,7 @@ class RecommerdationTree:
             self.data = data
             self.left = left
             self.right = right
-    
+        
     def build_tree(self, data: list[Data]):
         """
         Public method to initiate the tree-building process.
@@ -155,20 +155,57 @@ class RecommerdationTree:
 
         return
 
-    def save_tree(self, path: str = 'web/app/assistant/Recommendations/recomendation_tree.pkl'):
+    def serialize_tree(self):
         """
-        Saves the current KD-tree instance to a file using Python's pickle module.
+        Serializes the KD-tree to JSON format for storage.
         """
-        with open(path, 'wb') as file:
-            pickle.dump(self, file)
-            
+        def serialize_node(node):
+            if node is None:
+                return None
+            return {
+                'data': {
+                    'vector': node.data.vector,
+                    'index': node.data.index
+                },
+                'left': serialize_node(node.left),
+                'right': serialize_node(node.right)
+            }
+
+        return serialize_node(self.root)
+    
+    def save_tree(self, path: str = 'web/app/assistant/Recommendations/recomendation_tree.json'):
+        """
+        Saves the current KD-tree to a JSON file.
+        """
+        with open(path, 'w') as file:
+            json.dump(self.serialize_tree(), file)
+    
     @staticmethod
-    def load_tree(path: str = 'web/app/assistant/Recommendations/recomendation_tree.pkl'):
+    def deserialize_tree(data):
         """
-        Loads a KD-tree instance from a file using Python's pickle module.
+        Deserializes JSON dictionary back into a KD-tree structure.
         """
-        with open(path, 'rb') as file:
-            return pickle.load(file)
+        if data is None:
+            return None
+
+        node = RecommerdationTree.Node(
+            data=Data(data['data']['vector'], data['data']['index']),
+            left=RecommerdationTree.deserialize_tree(data['left']),
+            right=RecommerdationTree.deserialize_tree(data['right'])
+        )
+        return node
+    @staticmethod
+    def load_tree(path: str = 'web/app/assistant/Recommendations/recomendation_tree.json'):
+        """
+        Loads a KD-tree from a JSON file.
+        """
+        if RECOMMENDER_DEBUG: print('- Loadin recommendation tree from:',path)
+        with open(path, 'r') as file:
+            data = json.load(file)
+            tree = RecommerdationTree(len(data['data']['vector']))
+            tree.root = RecommerdationTree.deserialize_tree(data)
+            
+        return tree
         
 def euclidean_distance(point1, point2):
     dist = 0
@@ -183,7 +220,7 @@ class Recommender:
     """
     def __init__(self,
                  gpt_model: str,
-                 recommendations_tree_path: str='web/app/assistant/Recommendations/recomendation_tree.pkl',
+                 recommendations_tree_path: str='web/app/assistant/Recommendations/recomendation_tree.json',
                  recommendations_path: str="web/app/assistant/Recommendations/recommendations.txt"):
         """
         Initializes the Recommender instance with specified GPT model and paths for recommendations and tree.
@@ -216,28 +253,32 @@ class Recommender:
         return
         
     def get_recomendations(self, target: list[int], n_max: int):
+        """
+        Get
+        """
         # Load the recommendation tree and find nearest neighbors
         tree = RecommerdationTree.load_tree(self.recommendations_tree_path)
         nearest_data = tree.nearest_neighbors(target, n_max)
-        
         # Sort nearest_data by line number in ascending order for efficient reading
-        nearest_data.sort(key= lambda x: x[2])
+        nearest_data.sort(key = lambda x: x[1])
         
+        recommendations = []
         curent_index = 0
         # Read file and append recommendations
         with open(self.recommendations_path, 'r', encoding="utf-8") as file:
             for line_num, line in enumerate(file):
-                if line_num == nearest_data[curent_index][2]:
-                    
+                if line_num == nearest_data[curent_index][1]:
+
                     text = line.split(':', maxsplit=1)[1]
-                    nearest_data[curent_index].append(text.split('|'))
+                    recommendations.append((nearest_data[curent_index][0],text.split('|')))
                     
                     if curent_index >= len(nearest_data)-1:
                         break
                     curent_index += 1
         
-        # Return the sorted nearest data by distance
-        return nearest_data.sort(key=lambda x: x[0])
+        # Return the sorted recommendations by distance
+        recommendations.sort(key = lambda x:x[0])
+        return recommendations
         
     async def generate_categories_v(self, categories: list[str], text: str, max_val: int = 10):
         """
@@ -267,7 +308,7 @@ class Recommender:
             Each element in the vector should be an integer from 0 to max_value, representing the relevance of the text to that category.
             
             Think deeply on each category.
-            Your response always is only values of vector delimited by comma
+            Your response always is only values of vector delimited by comma.
             Example output:
             1,4,5,7
             
@@ -276,7 +317,7 @@ class Recommender:
             categories: {categories}
             max_value: {max_val}
             text: {text}""")
-        
+        print("GEENERATE CAT V PROMPT:", prompt, system, self.gpt_model)
         response, token_usage = await openai_chat_request(prompt=prompt, system=system, model=self.gpt_model)
         # Validate response
         if response is not None:
@@ -294,13 +335,28 @@ class Recommender:
                 return response, token_usage
             
             except Exception as e:
-                print(f"Error processing response: {str(e)}")
+                print(f"Error processing recommenders vector generation response: {str(e)}")
                 return None, token_usage
         else:
             print("Error in generating categories vector")
             return None, None
 
+    async def handle_recommendations(self, chat_history: str, distance_threshhold: int = 10):
+        vector, used_tokens = await self.generate_categories_v(categories=RECOMMENDATION_CATEGORIES, text=str(chat_history))
+        recommendations = self.get_recomendations(vector, N_MAX_RECOMMENDATIONS)
         
+        result = []
+        # Threshold
+        for dist, rec in recommendations:
+            if dist <= distance_threshhold:
+                result.append(rec)
+            else:
+                break
+        
+        return result, used_tokens
+        
+        
+    
     async def generate_recommendation(self, addition: str = None, vector: list[int] = None, vector_categories:list[str] = None, vector_max_val: int = None):
         """
         Utility function to generate at least some recommendations.

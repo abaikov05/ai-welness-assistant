@@ -1,25 +1,22 @@
 import json
-import asyncio
 
 from decimal import Decimal
 
 from channels.generic.websocket import AsyncWebsocketConsumer
-# from asgiref.sync import sync_to_async
 
 from .assistant.responder import Responder
 from .assistant.settings import *
 from .assistant.emotional_journal import EmotionalJournal
 from .assistant.moderation import Moderation
 
-# from django.contrib.auth import authenticate
+from .utils import get_chat_history, Encryption
 
 from .models import Message, Chat, User_profile, User_settings, User_emotional_journal, User_balance, Balance_transaction
-# from django.db.models import Count
 from django.utils import timezone
 from datetime import date
+from time import time
 
-# TODO Check balance before generating response
-# TODO Include emotinal journal in Responders prompt
+
 # TODO Welcome messages on last_login or last_message_time
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -44,12 +41,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
         - Sends the chat history to the client.
         """
         user = self.scope['user']
-
+        print(self.scope)
         # Check if the user is authenticated
         if not user.is_authenticated:
 
             await self.close(close_code='1006')
-            print("Unauthenticated user tried to connect!")
+            print("Unauthenticated user tried to connect!", user)
             return
 
         # Accept the connection
@@ -86,12 +83,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
         Returns:
             None
         """
+        if CONSUMERS_DEBUG: 
+            payload_recived = time()
+            print("-"*10,"Payload  recived at:", payload_recived)
+        
         user = self.scope['user']
 
         # Check if the user is authenticated
         if not user.is_authenticated:
             await self.close(close_code='1006')
-            print("Unauthenticated user sent payload!")
+            print("Unauthenticated user sent payload!", text_data)
             return
         
         try:
@@ -104,6 +105,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             print("Socket recived wrong payload format")
             return
         
+        encryption = Encryption()
         ###  Handle different payload types
         # Process user profile request
         if text_data_json.get('type') == 'user_profile':
@@ -112,11 +114,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
             user_profile = await User_profile.objects.aget(user=user)
             settings = await User_settings.objects.aget(user=user)
 
-            if CONSUMERS_DEBUG:print(f"{'_'*20}Profile request sent\nProfile:\n{user_profile.content}\n{'_'*20}")
+            if CONSUMERS_DEBUG:print(f"{'_'*20}\nProfile request sent\nProfile:\n{encryption.decrypt(user_profile.content)}\n{'_'*20}")
             # Send user profile data to the client
             await self.send(text_data=json.dumps({
                 'type':'user_profile',
-                'profile': user_profile.content,
+                'profile': encryption.decrypt(user_profile.content),
                 'gpt_model': settings.profiler_gpt_model,
                 'messages_for_profile_update': settings.messages_for_profile_update,
                 'messages_till_profile_update': settings.messages_till_profile_update
@@ -131,25 +133,43 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 profile = json.dumps(text_data_json['profile'])
             except:
                 await self.send(text_data=json.dumps({
-                    'type':'error_in_data_format'
+                    'type':'notification',
+                    'type_of_notification': 'error',
+                    'header': 'Profile',
+                    'message': 'Error in profile data! Changes not saved!'
                 }))
                 return
 
+            if len(profile) >= MAX_PROFILE_LENGTH:
+                await self.send(text_data=json.dumps({
+                    'type':'notification',
+                    'type_of_notification': 'error',
+                    'header': 'Profile',
+                    'message': 'Profile is too long! Changes not saved!'
+                }))
+                return
+            
             moder = Moderation()
             flagged, category = moder.moderate(profile)
             if flagged:
                 if CONSUMERS_DEBUG: print("Flagged: ", flagged)
                 await self.send(text_data=json.dumps({
-                    'type':'ill_profile_content'
+                    'type':'notification',
+                    'type_of_notification': 'error',
+                    'header': 'Profile',
+                    'message': f'Ill content in profile entry! Categories: {", ".join(category)}'
                 }))
                 return
             
             user_profile = await User_profile.objects.aget(user=user)
-            user_profile.content = profile
+            user_profile.content = encryption.encrypt(profile)
             await user_profile.asave()
 
             await self.send(text_data=json.dumps({
-                'type':'profile_saved'
+                'type':'notification',
+                'type_of_notification': 'success',
+                'header': 'Profile',
+                'message': 'Profile saved!'
             }))
 
             return
@@ -179,7 +199,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     }))
                     return
             
-            if not ((MIN_MESSAGES_FOR_PROFILE_UPDATE <= msg_for_update <= MAX_MESSAGES_FOR_PROFILE_UPDATE) and (msg_for_update % 2 == 1)):
+            if not (MIN_MESSAGES_FOR_PROFILE_UPDATE <= msg_for_update <= MAX_MESSAGES_FOR_PROFILE_UPDATE):
                 await self.send(text_data=json.dumps({
                     'type':'notification',
                     'type_of_notification': 'error',
@@ -188,7 +208,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }))
                 return
             
-            if not ((MIN_MESSAGES_TILL_PROFILE_UPDATE <= msg_till_update <= MAX_MESSAGES_TILL_PROFILE_UPDATE) and (msg_till_update % 2 == 1)):
+            if not (MIN_MESSAGES_TILL_PROFILE_UPDATE <= msg_till_update <= MAX_MESSAGES_TILL_PROFILE_UPDATE):
                 await self.send(text_data=json.dumps({
                     'type':'notification',
                     'type_of_notification': 'error',
@@ -224,6 +244,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             settings = await User_settings.objects.aget(user=user)
 
             if CONSUMERS_DEBUG:print(f"{'_'*20}\nJournal request sent\nJournals:\n{journals}\n{'_'*20}")
+            
             await self.send(text_data=json.dumps({
                 'type':'user_journal',
                 'journals': journals,
@@ -280,7 +301,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     }))
                     return
             
-            if not ((MIN_MESSAGES_FOR_JOURNAL_UPDATE <= msg_for_update <= MAX_MESSAGES_FOR_JOURNAL_UPDATE) and (msg_for_update % 2 == 1)):
+            if not (MIN_MESSAGES_FOR_JOURNAL_UPDATE <= msg_for_update <= MAX_MESSAGES_FOR_JOURNAL_UPDATE):
                 await self.send(text_data=json.dumps({
                     'type':'notification',
                     'type_of_notification': 'error',
@@ -289,7 +310,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }))
                 return
             
-            if not ((MIN_MESSAGES_TILL_JOURNAL_UPDATE <= msg_till_update <= MAX_MESSAGES_TILL_JOURNAL_UPDATE) and (msg_till_update % 2 == 1)):
+            if not (MIN_MESSAGES_TILL_JOURNAL_UPDATE <= msg_till_update <= MAX_MESSAGES_TILL_JOURNAL_UPDATE):
                 await self.send(text_data=json.dumps({
                     'type':'notification',
                     'type_of_notification': 'error',
@@ -362,6 +383,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }))
                 return
             
+            moder = Moderation()
+            flagged, category = moder.moderate(responder_personality)
+            if flagged:
+                if CONSUMERS_DEBUG: print("Flagged: ", flagged)
+                await self.send(text_data=json.dumps({
+                    'type':'notification',
+                    'type_of_notification': 'error',
+                    'header': 'Responder',
+                    'message': f'Ill content in responders personality! Category: {", ".join(category)}'
+                }))
+                return
+            
             settings = await User_settings.objects.aget(user=user)
             if responder_gpt_model != None:
                 settings.responder_gpt_model = responder_gpt_model
@@ -403,11 +436,27 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if text_data_json.get('type') == 'inputs':
             if CONSUMERS_DEBUG:print(f"{'_'*20}\nInputs recived by socket:{text_data_json}{'_'*20}")
 
+            user_balance = await User_balance.objects.aget(user=user)
+            if user_balance.balance < 0.01:
+                await self.send(text_data=json.dumps({
+                        'type':'notification',
+                        'type_of_notification': 'error',
+                        'header': 'Balance',
+                        'message': 'Your balance is too low and may not be sufficient to generate response! Please topup your balance.'
+                    }))
+                return
+            
             tool = text_data_json['tool']
             inputs = text_data_json['inputs']
 
             user_settings = await User_settings.objects.aget(user=user)
             user_profile = await User_profile.objects.aget(user=user)
+            
+            current_date = timezone.now().date()
+            user_emotional_journal, journal_created = await User_emotional_journal.objects.aget_or_create(user=user, date=current_date)
+            if journal_created:
+                if CONSUMERS_DEBUG: print('New emotional journal created!')
+                
             chat = await Chat.objects.aget(user=user)
 
             chat_history = await get_chat_history(
@@ -416,38 +465,39 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 reverse=True
             )
 
-            settings = AssistantSettings(
+            assistant_settings = AssistantSettings(
                 responder_gpt_model = user_settings.responder_gpt_model,
                 responder_personality = user_settings.responder_personality
             )
 
+            emotional_journal = EmotionalJournal(
+                journal=user_emotional_journal.journal,
+                updates_count=None,
+                gpt_model=None
+            )
             responder = Responder(
                 chat_history = chat_history,
-                user_profile = user_profile.content,
-                assistant_settings = settings
+                user_profile = encryption.decrypt(user_profile.content),
+                emotional_journal = emotional_journal,
+                assistant_settings = assistant_settings,
+                user=user
             )
 
             response, metadata = await responder.handle_user_inputs(tool = tool, inputs = inputs)
 
-            tokens_used = responder.total_tokens_used
-            if tokens_used['Responder']['total_tokens'] != 0:
-                total_cost = Decimal(0)
-
-                total_cost += Decimal(tokens_used[module]['prompt_tokens']/1000 * GPT_MODELS_PRICING[assistant_settings.responder_gpt_model]['input'])
-                total_cost += Decimal(tokens_used[module]['completion_tokens']/1000 * GPT_MODELS_PRICING[assistant_settings.responder_gpt_model]['output'])
-
-                new_user_balance = Decimal(user_balance.balance) - total_cost
-                new_user_balance.quantize(Decimal('0.0001'), rounding='ROUND_FLOOR')
-                user_balance.balance = new_user_balance
-                await user_balance.asave()
-
-                new_transaction = Balance_transaction(type = module, balance = user_balance, amount = total_cost)
-                await new_transaction.asave()
+            await calculate_cost(user_balance, responder.total_tokens_used, assistant_settings)
 
             if metadata:
                 if metadata.get('type') == "input_request":
                     if CONSUMERS_DEBUG: print(f"{'_'*20}\nInput request\nMetadata:\n{metadata}\n{'_'*20}")
 
+                    if metadata.get('type') == "tool_exeption":
+                        await self.send(text_data=json.dumps({
+                            'type': 'ai_response',
+                            'ai_message': response
+                        }))
+                        metadata['type'] = "input_request"
+                        
                     await self.send(text_data=json.dumps(metadata))
 
                     return
@@ -458,7 +508,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         'ai_message': response
                     }))
 
-                    new_bot_message = Message(chat = chat, text = response, is_bot = True)
+                    new_bot_message = Message(chat = chat, text = encryption.encrypt(response), is_bot = True)
                     await new_bot_message.asave()
 
                     return
@@ -490,27 +540,53 @@ class ChatConsumer(AsyncWebsocketConsumer):
             print("Wrong payload recived!: ", text_data_json)
             return
         
+        # Check user balance before responding
+        user_balance = await User_balance.objects.aget(user=user)
+        if user_balance.balance < 0.01:
+            await self.send(text_data=json.dumps({
+                    'type':'notification',
+                    'type_of_notification': 'error',
+                    'header': 'Balance',
+                    'message': 'Your balance is too low and may not be sufficient to generate response! Please topup your balance.'
+                }))
+            return
+        
         # Get data from recived message payload
         user_message = text_data_json['message']
         use_tools = text_data_json['use_tools']
         extract_inputs = text_data_json['extract_inputs']
-
+        
         # Send user message back to show it in chat window
         await self.send(text_data=json.dumps({
             'type':'user_message',
             'user_message': user_message
         }))
         
+        if len(user_message) >= MAX_MESSAGE_LEN:
+            await self.send(text_data=json.dumps({
+                    'type':'notification',
+                    'type_of_notification': 'error',
+                    'header': 'Message is too long!',
+                    'message': 'Assistant will not respond to this message and it is not saved in chat.'
+                }))
+            return
+        
+        await self.send(text_data=json.dumps({
+                'type':'loading_response'
+            }))
+        
         chat = await Chat.objects.aget(user=user)
 
         current_date = timezone.now().date()
 
-        # Should be as async tasks!!
         chat_history = await get_chat_history(
             chat = chat,
             limit = MESSAGES_TO_PASS_TO_ASSISTANT,
             reverse=True
         )
+
+        new_message = Message(chat=chat, text=encryption.encrypt(user_message))
+        await new_message.asave()
 
         message_count = await Message.objects.filter(chat=chat).acount()
         if CONSUMERS_DEBUG: print("Message count:", message_count)
@@ -518,7 +594,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         user_profile_object, profile_created = await User_profile.objects.aget_or_create(user=user)
         if profile_created:
             if CONSUMERS_DEBUG:print('New user profile created!')
-        user_profile = user_profile_object.content
+        user_profile = encryption.decrypt(user_profile_object.content)
         if CONSUMERS_DEBUG: print("User profile: ", user_profile)
 
         user_settings = await User_settings.objects.aget(user=user)
@@ -526,7 +602,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         user_emotional_journal, journal_created = await User_emotional_journal.objects.aget_or_create(user=user, date=current_date)
         if journal_created:
             if CONSUMERS_DEBUG: print('New emotional journal created!')
-        user_balance = await User_balance.objects.aget(user=user)
 
         emotional_journal = EmotionalJournal(
             journal = user_emotional_journal.journal,
@@ -536,7 +611,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
 
         if CONSUMERS_DEBUG: print(
-            f"{'_'*20}\nUser settings: ",
+            f"User settings: ",
             user_settings.responder_gpt_model,
             user_settings.responder_personality,
             user_settings.profiler_gpt_model,
@@ -544,13 +619,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             user_settings.messages_for_profile_update,
             user_settings.messages_till_profile_update,
             user_settings.messages_for_input_extraction,
-            user_settings.messages_till_journal_update, {'_'*20}
+            user_settings.messages_till_journal_update,'\n', '_'*20
         )
 
-        new_message = Message(chat=chat, text=user_message)
-        await new_message.asave()
-        # asyncio.gather()
-        # TODO async gather info from db
         assistant_settings = AssistantSettings(
             responder_gpt_model = user_settings.responder_gpt_model,
             responder_personality = user_settings.responder_personality,
@@ -569,8 +640,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             message_count = message_count,
             emotional_journal=emotional_journal,
             assistant_settings = assistant_settings,
+            user=user,
         )
-
+        
         response = await responder.handle_user_message(
             user_message = user_message,
             use_tools = use_tools,
@@ -580,43 +652,36 @@ class ChatConsumer(AsyncWebsocketConsumer):
         text, metadata, profile, journal = response
 
         if CONSUMERS_DEBUG: print("Responder used tokens: ", responder.total_tokens_used)
-        tokens_used = responder.total_tokens_used
-        for module in tokens_used:
-            if len(tokens_used[module]) != 0 :
-                if tokens_used[module]['total_tokens'] != 0:
-                    total_cost = Decimal(0)
-                    if module == 'Tools':
-                        print(f"\nModule: {module, tokens_used[module]}\n")
-                        total_cost += Decimal(tokens_used[module]['prompt_tokens']/1000 * GPT_MODELS_PRICING[assistant_settings.responder_gpt_model]['input'])
-                        total_cost += Decimal(tokens_used[module]['completion_tokens']/1000 * GPT_MODELS_PRICING[assistant_settings.responder_gpt_model]['output'])
-                    elif module == 'Profiler':
-                        total_cost += Decimal(tokens_used[module]['prompt_tokens']/1000 * GPT_MODELS_PRICING[assistant_settings.profiler_gpt_model]['input'])
-                        total_cost += Decimal(tokens_used[module]['completion_tokens']/1000 * GPT_MODELS_PRICING[assistant_settings.profiler_gpt_model]['output'])
-                    elif module == 'Journal':
-                        total_cost += Decimal(tokens_used[module]['prompt_tokens']/1000 * GPT_MODELS_PRICING[assistant_settings.journal_gpt_model]['input'])
-                        total_cost += Decimal(tokens_used[module]['completion_tokens']/1000 * GPT_MODELS_PRICING[assistant_settings.journal_gpt_model]['output'])
-                    elif module == 'Responder':
-                        total_cost += Decimal(tokens_used[module]['prompt_tokens']/1000 * GPT_MODELS_PRICING[assistant_settings.responder_gpt_model]['input'])
-                        total_cost += Decimal(tokens_used[module]['completion_tokens']/1000 * GPT_MODELS_PRICING[assistant_settings.responder_gpt_model]['output'])
-                    else:
-                        print('Invalid module in token usage statistics! Module not included in total cost!')
-
-                    new_user_balance = Decimal(user_balance.balance) - total_cost
-                    new_user_balance.quantize(Decimal('0.0001'), rounding='ROUND_FLOOR')
-                    user_balance.balance = new_user_balance
-                    await user_balance.asave()
-
-                    new_transaction = Balance_transaction(type = module, balance = user_balance, amount = total_cost)
-                    await new_transaction.asave()
-
+        
+        await calculate_cost(user_balance, responder.total_tokens_used, assistant_settings)
+                    
         if metadata:
-            if metadata.get('type') == "input_request":
-                if CONSUMERS_DEBUG: print(f"{'_'*20}\nSending input request:\n{json.dumps(metadata, indent=2)}\n{'_'*20}", )
+            if metadata.get('type') == "input_request" or metadata.get('type') == "tool_exeption":
+                if CONSUMERS_DEBUG: print(f"{'_'*20}\nSending input request:\n{json.dumps(metadata, indent=2)}\n{'_'*20}")
+                
+                if metadata.get('type') == "tool_exeption":
+                    await self.send(text_data=json.dumps({
+                        'type': 'ai_response',
+                        'ai_message': text
+                    }))
+                    metadata['type'] = "input_request"
+                    
                 await self.send(text_data=json.dumps(metadata))
 
                 if profile:
-                    user_profile_object.content = json.dumps(profile)
-                    await user_profile_object.asave()
+                    if len(profile) >= MAX_PROFILE_LENGTH:
+                        await self.send(text_data=json.dumps({
+                            'type':'notification',
+                            'type_of_notification': 'error',
+                            'header': 'Profile',
+                            'message': 'Assitant tried to update profile, but it was too long! Please, delete or shorten some entries for further updates.'
+                        }))
+                        return
+                    else:   
+                        user_profile_object.content = encryption.encrypt(json.dumps(profile))
+                        await user_profile_object.asave()
+                    # user_profile_object.content = encryption.encrypt(json.dumps(profile))
+                    # await user_profile_object.asave()
 
                 if journal:
                     # journal_text, updates_count, date = journal
@@ -633,18 +698,40 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'type': 'ai_response',
             'ai_message': text
         }))
-
-        new_bot_message = Message(chat=chat, text=text, is_bot=True)
+        
+        # To measure systems response generaing speed. 
+        if CONSUMERS_DEBUG: 
+            response_sent = time()
+            time_for_response = response_sent-payload_recived
+            print("-"*10,"Response sent at:", response_sent, f"\nTook {time_for_response} seconds to generate and send response.")
+            
+            total_tokens_generated = 0
+            for module in responder.total_tokens_used:
+                if len(responder.total_tokens_used[module]) != 0:
+                    total_tokens_generated += responder.total_tokens_used[module]['completion_tokens']
+            
+            print(f"Systems tokens per second: {total_tokens_generated/time_for_response}")
+            print('Responder, Tools, Recommender model:', assistant_settings.responder_gpt_model)
+            print('Profiler model:', assistant_settings.profiler_gpt_model)
+            print('Journal model:', assistant_settings.journal_gpt_model)
+            
+        new_bot_message = Message(chat=chat, text=encryption.encrypt(text), is_bot=True)
         await new_bot_message.asave()
-
+        
         if profile:
-            user_profile_object.content = json.dumps(profile)
-            await user_profile_object.asave()
-            # profile_update = User_profile(user = user, content = profile)
-            # await profile_update.asave()
+            if len(profile) >= MAX_PROFILE_LENGTH:
+                await self.send(text_data=json.dumps({
+                    'type':'notification',
+                    'type_of_notification': 'error',
+                    'header': 'Profile',
+                    'message': 'Assitant tried to update profile, but it was too long! Please, delete or shorten some entries for further updates.'
+                }))
+                return
+            else:   
+                user_profile_object.content = encryption.encrypt(json.dumps(profile))
+                await user_profile_object.asave()
 
         if journal:
-            # journal_text, updates_count, date = journal
             journal_text, updates_count = journal
             user_emotional_journal.journal = json.dumps(journal_text)
             user_emotional_journal.updates_count = updates_count
@@ -660,40 +747,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         return
     
-async def get_chat_history(chat: Chat, limit: int, offset: int = 0, for_socket: bool = False, reverse:bool = False):
-    
-    chat_history = []
-
-    if offset > 0:
-        offset = offset*limit
-        limit = limit + offset
-    message_range = slice(offset, limit)
-
-    async for message in Message.objects.order_by('-time').filter(chat=chat)[message_range]:
-        if message.is_bot:
-
-            if for_socket:
-                chat_history.append({"is_bot": True, "message": message.text})
-            else:
-                chat_history.append(f"Assistant: {message.text}")
-        else:
-
-            if for_socket:
-                chat_history.append({"is_bot": False, "message": message.text})
-            else:
-                chat_history.append(f"User: {message.text}")
-    
-    if reverse:
-        chat_history.reverse()
-    if CONSUMERS_DEBUG:
-        print(f"{'_'*20}\nChat history in consumers:")
-        if for_socket:
-            print(chat_history)
-        else:
-            print('\n'.join(chat_history))
-        print('_'*20)
-    return chat_history
-
 async def get_emotional_journals(user: object, limit: int, offset: int = 0, for_socket: bool = False):
     
     journals = []
@@ -719,3 +772,37 @@ async def get_emotional_journals(user: object, limit: int, offset: int = 0, for_
     if CONSUMERS_DEBUG: print(f"{'_'*20}\nJournals data in consumers:\n", journals, '_'*20)
 
     return journals
+
+async def calculate_cost(user_balance: User_balance, tokens_used: dict, assistant_settings: AssistantSettings):
+    def module_cost(module, gpt_model):
+        module_cost = Decimal(tokens_used[module]['prompt_tokens']/1000 * GPT_MODELS_PRICING[gpt_model]['input'])
+        module_cost += Decimal(tokens_used[module]['completion_tokens']/1000 * GPT_MODELS_PRICING[gpt_model]['output'])
+        return module_cost
+    
+    modules_and_models = {
+        "Tools": assistant_settings.responder_gpt_model,
+        "Profiler": assistant_settings.profiler_gpt_model,
+        "Journal": assistant_settings.journal_gpt_model,
+        "Recommender": assistant_settings.responder_gpt_model,
+        "Responder": assistant_settings.responder_gpt_model
+    }
+    
+    total_cost = Decimal(0)
+    for module in tokens_used:
+        if len(tokens_used[module]) == 0 or tokens_used[module]['total_tokens'] == 0:
+            continue
+        
+        module_costs = module_cost(module, modules_and_models[module])
+        total_cost += module_costs
+        if CONSUMERS_DEBUG: print(f"{module} cost - {module_costs}")
+        
+        new_transaction = Balance_transaction(type = module, balance = user_balance, amount = module_costs)
+        await new_transaction.asave()
+    
+    new_user_balance = Decimal(user_balance.balance) - total_cost
+    new_user_balance = new_user_balance.quantize(Decimal('0.0001'), rounding='ROUND_FLOOR')
+    
+    if CONSUMERS_DEBUG: print(f"User balance: {user_balance.balance} - New balance: {new_user_balance}")
+    
+    user_balance.balance = new_user_balance
+    await user_balance.asave()

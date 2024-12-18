@@ -6,16 +6,14 @@ import json
 from .Tools.tools_functions import *
 
 from .settings import TOOLS_DEBUG
-# FIXME Names of tools in browser
-
-# rename "found_inputs" to "inputs". "inputs" should contain all inputs and if there is no input than {"input1": None} 
+ 
 class Tools():
     """
     This class ir core component for managing and executing tools within the AI Wellbeing Assistant.
     It manages the extraction of relevant tools and inputs based on user messages and conversation context,
     as well as the execution of these tools.
     """
-    def __init__(self, gpt_model:str, tools_path = "web/app/assistant/Tools/tools_list.txt"):
+    def __init__(self, gpt_model:str, user, tools_path = "web/app/assistant/Tools/tools_list.txt"):
         """
         Initialize the Tools class with a GPT model and a path to the tools list.
 
@@ -26,10 +24,15 @@ class Tools():
         # Read and store the tools list with all tools descriptions from the specified file
         with open(tools_path, 'r', encoding='utf-8') as file:
             # Read the tools list from the specified file
-            self.tools_list = eval(file.read())
+            try:
+                self.tools_list = eval(file.read())
+            except:
+                raise Exception("Error in deffinition of tools in file.", tools_path)
 
         # Set the GPT model for the Tools GPT requests
         self.gpt_model = gpt_model
+        # User object for tools to acces his db
+        self.user = user
 
         # Dictionary to track the total tokens used for GPT prompts and responces
         self.total_tokens_used = {
@@ -38,7 +41,7 @@ class Tools():
             "total_tokens": 0
         }
 
-    async def extract_tools(self, user_message: str, previous_message: str) -> list[str]:
+    async def extract_tools(self, user_message: str, previous_message: str = None) -> list[str]:
         """
         Extracts relevant tools based on the user's message and previous message context.
         
@@ -81,7 +84,7 @@ class Tools():
 
         # Gather token usage statistics.
         if token_usage:
-            self.total_tokens_used = {key: self.total_tokens_used[key] + token_usage[key] for key in self.total_tokens_used}
+            self.save_token_usage(token_usage)
 
         # Debugging information.
         if TOOLS_DEBUG: print(f"{'_'*20}\nTool extraction:\n{prompt}\n{system_message}\n{response}\n{'_'*20}")
@@ -105,11 +108,11 @@ class Tools():
             if valid_tools:
                 return valid_tools
             else:
-                if TOOLS_DEBUG: print('GPT tied to extract tools but found no valid tools to use')
+                if TOOLS_DEBUG: print('GPT tried to extract tools but found no valid tools to use')
                 return None
         
         else:
-            if TOOLS_DEBUG: print('GPT tied to extract tools but found no tools to use')
+            if TOOLS_DEBUG: print('GPT tried to extract tools but found no tools to use')
             return None
         
     def get_tool(self, tool_name: str) -> dict:
@@ -180,7 +183,7 @@ class Tools():
 
         # Gather token usage statistics.
         if token_usage:
-            self.total_tokens_used = {key: self.total_tokens_used[key] + token_usage[key] for key in self.total_tokens_used}
+            self.save_token_usage(token_usage)
 
         # Debug information.
         if TOOLS_DEBUG: print(f"{'_'*20}\nInput extraction:\n{prompt}\n{system_message}\n{response}\n{'_'*20}")
@@ -218,7 +221,7 @@ class Tools():
             
             # Handle exceptions that may occur during JSON parsing and return None.
             except Exception as e:
-                print('Error in input format from GPT', e)
+                print('Error in extracted inputs format from GPT', e)
                 # Return None as tool inputs and tool's required inputs as missing
                 missing_inputs = tool['required_inputs']
                 
@@ -286,12 +289,25 @@ class Tools():
 
         # Check if the tool requires inputs.
         if tool['needs_inputs']:
-
             # Check if inputs are provided.
             if inputs:
                 try:
                     # Try to execute the tool with the provided inputs.
-                    tool_result = tool['function_name'](**inputs)
+                    if tool['needs_user_db'] and tool['uses_gpt']:
+                        tool_result, token_usage = await tool['function_name'](**inputs, user=self.user)
+                        if token_usage:
+                            self.save_token_usage(token_usage)
+                        
+                    elif tool['needs_user_db']:
+                        tool_result = await tool['function_name'](**inputs, user=self.user)
+                    
+                    elif tool['uses_gpt']:
+                        tool_result, token_usage = await tool['function_name'](**inputs)
+                        if token_usage:
+                            self.save_token_usage(token_usage)
+                    else:
+                        tool_result = tool['function_name'](**inputs)
+                        
                     metadata = {
                         "type": "tool_result",
                         "tool": tool['name'],
@@ -304,14 +320,15 @@ class Tools():
 
                     # If the tool fails to execute, create a message with description of an error and
                     # metadata with input request to get correct input data from user and rerun the tool.
-                    if TOOLS_DEBUG: print("Recived exception running tool:\n", e, '\n', 'Inputs:\n', inputs)
                     tool_result = await self.describe_input_error(tool, inputs, e)
                     metadata = {
-                        "type": "input_request",
+                        "type": "tool_exeption",
                         "tool": tool['name'],
                         "found_inputs": inputs,
                         "missing_inputs": [],
+                        "inputs_description": tool['inputs_description']
                     }
+                    if TOOLS_DEBUG: print("Received exception while running tool:\n", e, '\n', 'Inputs:\n', inputs, '\ntool_result:\n', tool_result)
                     return tool_result, metadata
             else:
                 # If inputs are not provided, ask for inputs.
@@ -319,11 +336,25 @@ class Tools():
                 return tool_result, metadata
         else:
             # If the tool does not need inputs, execute the tool without inputs.
-            tool_result = tool['function_name']()
+            if tool['needs_user_db'] and tool['uses_gpt']:
+                tool_result, token_usage = await tool['function_name'](**inputs, user=self.user)
+                if token_usage:
+                    self.save_token_usage(token_usage)
+        
+            elif tool['needs_user_db']:
+                tool_result = await tool['function_name'](**inputs, user=self.user)
+                
+            elif tool['uses_gpt']:
+                tool_result, token_usage = await tool['function_name'](**inputs)
+                if token_usage:
+                    self.save_token_usage(token_usage)
+            else:
+                tool_result = tool['function_name']()
+                
             metadata = {
-                        "type": "tool_result",
-                        "tool": tool['name']
-                        }
+                "type": "tool_result",
+                "tool": tool['name']
+                }
             return tool_result, metadata
 
     async def handle_tools(self, extract_inputs: bool, user_message: str, chat_history: list, messages_for_input_extraction: int) -> tuple[str, dict] | tuple[None, None]:
@@ -340,11 +371,15 @@ class Tools():
         - Tuple containing output of the tool and metadata dictionary.
         """
 
-        # Extract tools from the user's message and previous chat message.
+        # Extract tools from the user's message and previous chat message if it exsists.
+        if len(chat_history) >= 1: previous_message = chat_history[-1]
+        else: previous_message = None
+        
         extracted_tools = await self.extract_tools(
             user_message = user_message,
-            previous_message = chat_history[-1]
+            previous_message= previous_message,
         )
+        
         
         # If tool detected in chat
         if extracted_tools:
@@ -426,19 +461,11 @@ class Tools():
 
         # Gather token usage statistics.
         if token_usage:
-            self.total_tokens_used = {key: self.total_tokens_used[key] + token_usage[key] for key in self.total_tokens_used}
+            self.save_token_usage(token_usage)
+            # self.total_tokens_used = {key: self.total_tokens_used[key] + token_usage[key] for key in self.total_tokens_used}
 
         return response
     
-    # def tool_needs_input(self, tool_name:str):
-    #     """
-    #     Small helper function to check if a given tool requires input based on its name.
-
-    #     Args:
-    #     - tool_name (str): Name of the tool to check.
-
-    #     Returns:
-    #     - True if the tool requires input, False otherwise.
-    #     """
-    #     tool = self.get_tool(tool_name)
-    #     return tool['needs_inputs']
+    def save_token_usage(self, token_usage: dict):
+        for key in self.total_tokens_used:
+            self.total_tokens_used[key] += token_usage[key]

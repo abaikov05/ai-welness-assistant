@@ -2,6 +2,7 @@ from .moderation import Moderation
 from .tools import Tools
 from .user_profile import Profile
 from .emotional_journal import EmotionalJournal
+from .recommender import Recommender
 from .settings import AssistantSettings, CHAT_HISTORY_MESSAGES_FOR_RESPONDER, RESPONDER_DEBUG
 
 from textwrap import dedent
@@ -20,7 +21,7 @@ class Responder:
     """
     The Responder class manages the response generation process within the AI Wellbeing Assistant.
     """
-    def __init__(self, user_profile: str, chat_history: list[str], assistant_settings: AssistantSettings, message_count: int = None, emotional_journal: EmotionalJournal = None) -> None:
+    def __init__(self, user_profile: str, chat_history: list[str], assistant_settings: AssistantSettings, emotional_journal: EmotionalJournal, user, message_count: int = None) -> None:
         """
         Initialize the Responder class with necessary attributes.
 
@@ -33,9 +34,10 @@ class Responder:
         """
         self.settings = assistant_settings
         self.moderation = Moderation()
-        self.tools = Tools(gpt_model = self.settings.responder_gpt_model)
+        self.tools = Tools(gpt_model = self.settings.responder_gpt_model, user=user)
         self.user_profile = Profile(user_profile = user_profile, gpt_model = self.settings.profiler_gpt_model)
         self.emotioal_journal = emotional_journal
+        self.recommender = Recommender(gpt_model=self.settings.responder_gpt_model)
         self.chat_history = chat_history
         self.message_count = message_count
 
@@ -44,6 +46,7 @@ class Responder:
             "Tools":{},
             "Profiler":{},
             "Journal":{},
+            "Recommender": {},
             "Responder": {}
         }
 
@@ -59,7 +62,6 @@ class Responder:
         Returns:
         - Tuple containing response, metadata, profile update, and journal update.
         """
-
         # Apply moderation to the user's message.
         flagged, flagged_categories = self.moderation.moderate(user_message = user_message)
         if flagged:
@@ -86,20 +88,21 @@ class Responder:
             task_list['tools_task'] = tools_task
 
         # Check if it's time to update the user profile.
-        if self.message_count % self.settings.messages_till_profile_update == 0:
+        if (self.message_count // 2) % self.settings.messages_till_profile_update == 0:
             profile_update_task = asyncio.create_task(
                 self.user_profile.update_user_profile(
-                    previous_messages = self.chat_history[:self.settings.messages_for_profile_update],
+                    chat_history = self.chat_history[-self.settings.messages_for_profile_update:],
                     user_message = user_message,
                     )
                 )
             task_list['profile_update_task'] = profile_update_task
         
         # Check if it's time to update the emotional journal.
-        if self.message_count % self.settings.messages_till_journal_update == 0:
+        if (self.message_count // 2) % self.settings.messages_till_journal_update == 0:
             journal_update_task = asyncio.create_task(
                 self.emotioal_journal.update_journal(
-                    chat_history = self.chat_history[-self.settings.messages_for_journal_update:]
+                    chat_history = self.chat_history[-self.settings.messages_for_journal_update:],
+                    user_message=user_message
                     )
                 )
             task_list['journal_update_task'] = journal_update_task
@@ -130,13 +133,12 @@ class Responder:
         # Process journal update results if the journal update task was created.
         if task_list.get('journal_update_task'):
             journal_result = results.pop(0)
-            # journal, updates_count, journal_date, journal_used_tokens =  journal_result
             journal, updates_count, journal_used_tokens =  journal_result
 
-            if not journal or updates_count:
+            if not journal:
                 journal_update = None
             else:
-                # journal_update = journal, updates_count, journal_date
+                self.emotioal_journal.journal = journal
                 journal_update = journal, updates_count
             print("Journal update: \n",journal_update, '\n' , '_'*100)
 
@@ -154,17 +156,24 @@ class Responder:
             # If tool executed successfuly, add result to prompt
             if metadata.get('type') == 'tool_result':
                 prompt += tools_result_additon(tools_result)
-            
+
             # If tool missing inputs, return everything and skip generating response.
             elif metadata.get('type') == 'input_request':
                 response = None
+                return response, metadata, profile_update, journal_update
+            
+            elif metadata.get('type') == 'tool_exeption':
+                response = tools_result
                 return response, metadata, profile_update, journal_update
             else:
                 print("Unexpected result of the tool. Metadata:", metadata)
                 return
 
-        # Create system message and prompt for the responder.
-        system_message = responder_system_message('\n'.join(self.user_profile.user_profile))
+        recommendations, recomm_used_tokens = await self.recommender.handle_recommendations(user_message)
+        if recomm_used_tokens:
+            self.total_tokens_used["Recommender"] = recomm_used_tokens
+        
+        system_message = responder_system_message('\n'.join(self.user_profile.user_profile), self.emotioal_journal.journal, '\n'.join('; '.join(inner) for inner in recommendations))
         system_message += '\n' + personality_addition(self.settings.responder_personality)
 
         prompt += responder_prompt(chat_history = '\n'.join(self.chat_history[-CHAT_HISTORY_MESSAGES_FOR_RESPONDER:]),  user_message = user_message)
@@ -212,7 +221,16 @@ class Responder:
                 response = None
                 return response, metadata
             
-        system_message = responder_system_message('\n'.join(self.user_profile.user_profile))
+            elif metadata.get('type') == 'tool_exeption':
+                response = tools_result
+                return response, metadata
+
+        print("NiggA"*125,'\nRecommenders message:',self.chat_history[-1])
+        recommendations, recomm_used_tokens = await self.recommender.handle_recommendations(self.chat_history[-1])
+        if recomm_used_tokens:
+            self.total_tokens_used["Recommender"] = recomm_used_tokens
+        
+        system_message = responder_system_message('\n'.join(self.user_profile.user_profile), self.emotioal_journal.journal, '\n'.join('; '.join(inner) for inner in recommendations))
         prompt += responder_prompt('\n'.join(self.chat_history[-CHAT_HISTORY_MESSAGES_FOR_RESPONDER:]))
 
 
@@ -227,13 +245,19 @@ class Responder:
             self.total_tokens_used['Responder'] = responder_used_tokens
 
         return response, metadata
-def responder_system_message(user_profile):
+def responder_system_message(user_profile, emotional_journal, recommendations):
     return dedent(f"""\
 You are a helpful wellbeing assistant.
 You care about user and trying to make users mental and physical health better.
 You have a chat history as a context, focus on answering to LAST USER MESSAGE.
-You have a user profile to better understand user:|
-{user_profile}|""")
+You have a user profile to better understand the user:|
+{user_profile}|
+You also have the user's emotional journal.The emotional journal reflects\
+how the user feels, represented as emotions with marks from 0 to 100 indicating\
+the intensity of each emotion.|
+{emotional_journal}|
+Here is a list of recommendation to user that might be useful:|
+{recommendations}|""")
 
 def responder_prompt(chat_history: str, user_message: str = None):
     if user_message:

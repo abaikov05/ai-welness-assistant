@@ -7,5 +7,7 @@
         'inputs': ['exeption'],
         'required_inputs': [],
         'inputs_description': 'exeption - throw exeption True or False'
+        'needs_user_db': False,
+        'uses_gpt': False
     }
 ]

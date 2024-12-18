@@ -6,14 +6,8 @@ class Moderation:
       - True/False - whether the message has been flagged
       - The categories if True
     """
-
-    def __init__(self, user_id=None):
-        self.user_id = user_id
-
-    # A function to check user message for ill-intent
-
     def moderate(self, user_message):
-
+        '''A function to check user message for ill-intent'''
         # Wait until response is received
         response = openai.Moderation.create(input=user_message)
 

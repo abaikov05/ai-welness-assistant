@@ -2,6 +2,11 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 # Create your models here.
+# import os
+# from dotenv import load_dotenv
+# from cryptography.fernet import Fernet
+# load_dotenv()
+# crypter = Fernet(os.environ.get("Encryption"))
 
 class Chat(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -10,11 +15,11 @@ class Chat(models.Model):
 class Message(models.Model):
     chat = models.ForeignKey(Chat, on_delete=models.CASCADE)
     time = models.DateTimeField(default=timezone.now)
-    text = models.TextField(max_length=2500)
+    text = models.TextField(max_length=10000)
     is_bot = models.BooleanField(default=False)
 
 class User_profile(models.Model):
-    content = models.TextField(max_length=4000, default='[]')
+    content = models.TextField(max_length=14000)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     datetime = models.DateTimeField(default=timezone.now)
 
@@ -43,11 +48,11 @@ class User_emotional_journal(models.Model):
 
 class User_balance(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    balance = models.DecimalField(default=0, max_digits=7, decimal_places=4)
+    balance = models.DecimalField(default=0, max_digits=8, decimal_places=4)
     datetime = models.DateTimeField(default=timezone.now)
 
 class Balance_transaction(models.Model):
     balance = models.ForeignKey(User_balance, on_delete=models.CASCADE)
     type = models.TextField(max_length=100)
-    amount = models.DecimalField(default=0, max_digits=7, decimal_places=4)
+    amount = models.DecimalField(default=0, max_digits=8, decimal_places=5)
     datetime = models.DateTimeField(default=timezone.now)

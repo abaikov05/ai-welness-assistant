@@ -34,12 +34,12 @@ class Profile:
 
         self.gpt_model = gpt_model
 
-    async def generate_user_profile(self, previous_messages: str, user_message: str) -> tuple [dict|None, dict|None]:
+    async def generate_user_profile(self, chat_history: list[str], user_message: str) -> tuple [dict|None, dict|None]:
         """
         Generates the user profile based on chat history and the latest user message.
 
         Args:
-            previous_messages (str): Chat history as a string.
+            chat_history (str): Chat history as a string.
             user_message (str): The latest user message.
 
         Returns:
@@ -54,7 +54,8 @@ class Profile:
         Your response should be short but descriptive, focusing on the most useful data for understanding the user.
         - If no changes need to be made to the user profile, your response is empty.
         - Don't duplicate the old profile; your response should only include updates.
-        - To change an entire entry, respond with {"number": "Changed text of this element"}
+        - To change an entire entry, respond with {"number": "Changed text of this element"}.
+        - Make different entries for information that differs in meaning.
         NEVER RESPOND DIRECTLY TO THE USER!
         Follow this JSON format:
         {
@@ -65,13 +66,13 @@ class Profile:
 
         # Compose the prompt for profile generation
         prompt = ("PREVIOUS USER PROFILE:|\n" + json.dumps(self.profile) + '|\n'
-        + "CHAT HISTORY:|\n" + '\n'.join(previous_messages) + '|\n'
+        + "CHAT HISTORY:|\n" + '\n'.join(chat_history) + '|\n'
         + f"Last user message: {user_message}\n"
         + 'Remember format: {{"number": "Changed text of this element", "number": "Changed text of this element"}}')
 
         response, token_usage = await openai_chat_request(prompt=prompt, system=system_message, temperature=0.8, model=self.gpt_model)
         
-        if PROFILE_DEBUG: print(f"{'_'*20}\nProfiler prompts:\nSystem:\n{system_message}\nPrompt\n{prompt}\nGenerated user prifile changes:\n{response}\n{'_'*20}")
+        if PROFILE_DEBUG: print(f"{'_'*20}\n- Profiler:\nSystem:\n{system_message}\nPrompt\n{prompt}\nGenerated user prifile changes:\n{response}\n{'_'*20}")
 
         # Process and validate the response
         if response and response.strip() != '':
@@ -91,12 +92,12 @@ class Profile:
         else:
             return None, None
         
-    async def update_user_profile(self, previous_messages: str, user_message: str) -> tuple [list|None, dict|None]:
+    async def update_user_profile(self, chat_history: str, user_message: str) -> tuple [list|None, dict|None]:
         """
         Update the user profile based on chat history and the latest user message.
 
         Args:
-            previous_messages (str): Chat history as a string.
+            chat_history (str): Chat history as a string.
             user_message (str): The latest user message.
 
         Returns:
@@ -104,12 +105,11 @@ class Profile:
             and dictionary with token usage information.
         """
         # Generate profile changes
-        profile_changes, token_usage = await self.generate_user_profile(previous_messages=previous_messages, user_message=user_message)
+        profile_changes, token_usage = await self.generate_user_profile(chat_history=chat_history, user_message=user_message)
 
         if PROFILE_DEBUG: print("Last profile:\n", self.profile)
         # Apply profile changes if any
-        if profile_changes is not None:
-
+        if profile_changes:
             for i in profile_changes: 
                 self.profile[i] = profile_changes[i]
             if PROFILE_DEBUG: print("New profile:\n", self.profile)

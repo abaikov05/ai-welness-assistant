@@ -4,7 +4,7 @@ from datetime import date
 from textwrap import dedent
 import json
 
-from .settings import EMOTIONAL_JOURNAL_DEBUG
+from .settings import EMOTIONAL_JOURNAL_DEBUG, EMOTIONAL_JOURNAL_EMOTIONS
 
 class EmotionalJournal():
     def __init__(self, journal: str, updates_count: int, gpt_model: str) -> None:
@@ -25,7 +25,7 @@ class EmotionalJournal():
             self.updates_count = 0
         self.gpt_model = gpt_model
         
-    async def update_journal(self, chat_history: list) -> tuple[dict, int, date, dict]:
+    async def update_journal(self, chat_history: list, user_message:str) -> tuple[dict, int, date, dict]:
         """
         Update the emotional journal based on the analysis of the provided chat history.
 
@@ -37,19 +37,22 @@ class EmotionalJournal():
 
         """
         # System message with instruction
-        system = dedent("""\
-        Your task is to deeply analize conversation and give a mark to common primal emotions that user might feel.
+        system = dedent(f"""\
+        Your task is to deeply analyze conversation and give a mark to given emotions that user might feel.
         Mark must always be in range 0-100.
-        Your response is always JSON file with this format:
-        {
+        You must only give marks of these emotions:|
+        {EMOTIONAL_JOURNAL_EMOTIONS}|
+        Your response is always in JSON with this format:
+        {{
             "emotion_name": "mark",
             "emotion_name": "mark",
             ...
-        }""")
-        # Prase chat history list to string
-        chat_history = '\n'.join(chat_history)
-        # Create a prompt with chat history
-        prompt = f"Conversation:|\n{chat_history}|"
+        }}""")
+
+        # Create a prompt
+        prompt = ("Conversation:|"+
+        '\n'.join(chat_history)+"|"+
+        "\nLast user message:" + user_message)
 
         # Request a response from the OpenAI GPT model.
         response, token_usage = await openai_chat_request(prompt = prompt, system = system, model = self.gpt_model)
@@ -61,12 +64,13 @@ class EmotionalJournal():
             # Attempt to parse the response as JSON
             try:
                 response = json.loads(response)
-                
                 # Try to parse values to float and deletes not valid elements from response
                 for key, value in list(response.items()):
+                    # if key not in EMOTIONAL_JOURNAL_EMOTIONS:
+                    #     del response[key]
                     try:
                         value = float(value)
-                        if not (0 <= value <= 100):
+                        if not (0 < value <= 100):
                             del response[key]
                     except:
                         del response[key]
