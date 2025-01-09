@@ -5,6 +5,10 @@ CHAT_MESSAGES_TO_LOAD_PER_REQUEST = 20
 EMOTIONAL_JOURNALS_TO_LOAD_PER_REQUEST = 4
 
 MAX_MESSAGE_LEN = 7000
+
+AUDIO_TRANSCRIPTION_MODEL = 'whisper-1'
+# Pricing per minute
+AUDIO_TRANSCRIPTION_MODEL_PRICING = 0.006
 # At this time there are only 2 cost-efficient models
 AVAILABLE_GPT_MODELS = [
     'gpt-4o',
@@ -17,7 +21,7 @@ GPT_MODELS_PRICING = {
 }
 # Responder constants
 MESSAGES_TO_PASS_TO_ASSISTANT = 12
-CHAT_HISTORY_MESSAGES_FOR_RESPONDER = 5
+CHAT_HISTORY_MESSAGES_FOR_RESPONDER = 10
 
 # Profiler constants
 MIN_MESSAGES_FOR_PROFILE_UPDATE = 1
@@ -36,7 +40,7 @@ MAX_MESSAGES_TILL_JOURNAL_UPDATE = 20
 EMOTIONAL_JOURNAL_EMOTIONS = [
     "happiness", "gratitude", "excitement", "relief", "contentment", 
     "sadness", "anger", "fear", "disappointment", 
-    "curiosity", "confusion", "ambivalence", 
+    "confusion", "ambivalence", 
     "empowerment", "shame", "guilt", "loneliness", "love"
 ]
 # Tools constants 

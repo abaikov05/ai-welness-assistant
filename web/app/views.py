@@ -104,7 +104,7 @@ def register_user(request):
                 Please note that while I strive to provide accurate and helpful information, as an AI, I can occasionally make mistakes. Always double-check critical advice or recommendations.
                 
                 Let's get started! 💬""")
-            welcome_message = Message.objects.create(chat=user_chat, is_bot=True, text=welcome)
+            welcome_message = Message.objects.create(chat=user_chat, is_bot=True, text=encryption.encrypt(welcome))
             welcome_message.save()
 
             login(request, user)

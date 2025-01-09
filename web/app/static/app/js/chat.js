@@ -14,12 +14,18 @@ function hideSidePanel() {
     };
 }
 
+if (window.location.host === '127.0.0.1:8000') {
+    var protocol = 'ws://';
+}
+else { var protocol = 'wss://'; };
+
 const chatSocket = new WebSocket(
-    'ws://'
+    protocol
     + window.location.host
     + '/ws/'
     + 'chat'
 )
+
 
 const use_tools_check = document.getElementById('use_tools');
 const extract_inputs_check = document.getElementById('extract_inputs');
@@ -45,30 +51,176 @@ use_tools_check.addEventListener('change', checkboxToggler);
 extract_inputs_check.addEventListener('change', checkboxToggler);
 
 const message_form = document.getElementById('message-form')
+const messageTextbox = document.getElementById('message_textbox')
 
-message_form.addEventListener('submit', (e) => {
-    e.preventDefault()
-    let message = e.target.message_textbox.value
-    console.log(message)
-    chatSocket.send(JSON.stringify({
-        'message': message,
-        'use_tools': use_tools_check.checked,
-        'extract_inputs': extract_inputs_check.checked
-    }))
-    e.target.message_textbox.value = ''
+// Voice messages
+let media_recorder;
+let audio_chunks = [];
+let audioBlob;
+
+const record_button = document.getElementById("record");
+const stop_button = document.getElementById("stop");
+const audio_element = document.getElementById("audio");
+const audioMessage = document.getElementById("audio-message");
+const cancel_audio = document.getElementById("cancel-audio");
+record_button.addEventListener("click", async () => {
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        media_recorder = new MediaRecorder(stream);
+
+        // Capture audio chunks
+        media_recorder.ondataavailable = (event) => audio_chunks.push(event.data);
+
+        // Handle stop
+        media_recorder.onstop = () => {
+            audioBlob = new Blob(audio_chunks, { type: "audio/webm" });
+            audio_chunks = [];
+            let audio_url = URL.createObjectURL(audioBlob);
+            audio_element.src = audio_url;
+        };
+
+        // Start recording
+        media_recorder.start();
+        record_button.disabled = true;
+        stop_button.disabled = false;
+    } else {
+        alert("Audio recording not supported in this browser.");
+    }
 });
 
-message_form.addEventListener('keypress', function (e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        let message = e.target.value;
-        console.log(message);
+stop_button.addEventListener("click", () => {
+    media_recorder.stop();
+    audioMessage.classList.remove('d-none');
+    messageTextbox.classList.add('d-none');
+    record_button.disabled = false;
+    stop_button.disabled = true;
+});
+cancel_audio.addEventListener("click", () => {
+    messageTextbox.classList.remove('d-none');
+    audioMessage.classList.add('d-none');
+    record_button.disabled = false;
+    stop_button.disabled = true;
+    audioBlob = null;
+});
+
+// Image input
+const image_input_btn = document.getElementById('image-input-btn');
+const imageInputBtnIco = document.getElementById('image-input-btn-ico');
+const imageInput = document.getElementById('image-input');
+const imageCancelBtn = document.getElementById('image-cancel-btn');
+
+let imageFile;
+let image_blob;
+image_input_btn.addEventListener('click', () => {
+    imageInput.click();
+})
+
+imageInput.addEventListener("change", () => {
+    if (imageInput.files && imageInput.files[0]) {
+        imageFile = imageInput.files[0];
+        const reader = new FileReader();
+
+        reader.onload = (event) => {
+            imageInputBtnIco.src = event.target.result;
+            imageCancelBtn.disabled = false;
+        };
+        reader.readAsDataURL(imageFile);
+    }
+});
+
+imageCancelBtn.addEventListener("click", () => {
+    imageInput.value = "";
+    imageInputBtnIco.src = "/static/app/img.png";
+    imageCancelBtn.disabled = true;
+
+});
+
+function createNotification(type, header, message, fade_delay = null) {
+
+    let notification = document.getElementById('notification');
+    let notification_content = document.getElementById('notification-content');
+    let notification_header = document.getElementById('notification-header');
+
+    if (fade_delay !== null) {
+        notification.setAttribute('data-bs-delay', fade_delay)
+    }
+
+    notification_header.innerText = header;
+
+    if (type === 'error') {
+        notification.className = "toast bg-warning opacity-75";
+    }
+    if (type === 'success') {
+        notification.className = "toast bs-success opacity-75";
+    }
+    notification_content.innerText = message;
+
+    var toast_notification = bootstrap.Toast.getOrCreateInstance(notification);
+    toast_notification.show();
+};
+function sendMessage(event) {
+    event.preventDefault();
+    if (chatSocket.readyState !== WebSocket.OPEN) {
+        createNotification('error', 'Connection lost', 'Plese reload the page to reconnect!', 9999)
+        return;
+    }
+    if (audioBlob || imageFile) {
+        let message = messageTextbox.value
+
+        let mediaMetadata = {
+            'use_tools': use_tools_check.checked ? 1 : 0,
+            'extract_inputs': extract_inputs_check.checked ? 1 : 0,
+            'audio_size': null,
+            'image_size': null,
+            'image_type': null,
+            'message': message,
+        };
+        if (audioBlob) {
+            audioMessage.classList.add('d-none');
+            messageTextbox.classList.remove('d-none');
+            mediaMetadata['audio_size'] = audioBlob.size;
+        }
+        if (imageFile) {
+            imageInput.value = "";
+            imageInputBtnIco.src = "/static/app/img.png";
+            imageCancelBtn.disabled = true;
+
+            image_blob = new Blob([imageFile])
+            mediaMetadata['image_size'] = image_blob.size;
+            mediaMetadata['image_type'] = imageFile.type;
+
+            imageFile = null;
+        }
+        // Binary separator '|'
+        const separator = new Uint8Array([124]);
+        const encoder = new TextEncoder();
+        let mediaMetadataMinary = encoder.encode(JSON.stringify(mediaMetadata));
+        let combined_data = new Blob([mediaMetadataMinary, separator, audioBlob, image_blob]);
+
+        audioBlob = null;
+        image_blob = null;
+        messageTextbox.value = ''
+
+        chatSocket.send(combined_data);
+    }
+    else {
+        let message = messageTextbox.value
         chatSocket.send(JSON.stringify({
             'message': message,
             'use_tools': use_tools_check.checked,
             'extract_inputs': extract_inputs_check.checked
-        }));
-        e.target.value = '';
+        }))
+        messageTextbox.value = ''
+    }
+}
+
+message_form.addEventListener('submit', (e) => {
+    sendMessage(e);
+});
+
+message_form.addEventListener('keypress', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        sendMessage(e);
     }
 });
 
@@ -79,17 +231,11 @@ const chat = document.getElementById('chat-container')
 
 // Load more messages on scroll up all the way.
 function load_more_chat() {
-    // Delay in milliseconds (e.g., 200 milliseconds)
     const delay = 500;
-    // Clear any existing timeout
     clearTimeout(this.scrollTimeout);
 
-    // Set a new timeout
     this.scrollTimeout = setTimeout(() => {
-        // Check if the scroll position is at the top
         if (chat.scrollTop === 0) {
-            // Your code here, indicating that the element has been scrolled all the way up
-            console.log('Scrolled all the way up! Offset: ', chat_offset);
             chat_offset += 1
 
             let loading_container = document.createElement('div');
@@ -114,7 +260,7 @@ function load_more_chat() {
 let chat_offset = 0
 chat.addEventListener('scroll', load_more_chat)
 
-// User profile showing and settings handeling.
+// User profile showing and settings handling.
 const show_profile_btn = document.getElementById('show-profile-btn')
 show_profile_btn.addEventListener('click', (e) => {
     chatSocket.send(JSON.stringify({
@@ -146,7 +292,7 @@ profile_save_btn.addEventListener('click', (e) => {
             formData.push(input.value);
         }
     }
-    console.log(formData);
+    // console.log(formData);
     chatSocket.send(JSON.stringify({
         'type': 'user_profile_change',
         'profile': formData
@@ -268,29 +414,6 @@ show_usage_btn.addEventListener('click', (e) => {
         'type': 'user_transactions',
     }))
 })
-function create_notification(type, header, message, fade_delay = null) {
-
-    let notification = document.getElementById('notification');
-    let notification_content = document.getElementById('notification-content');
-    let notification_header = document.getElementById('notification-header');
-
-    if (fade_delay !== null) {
-        notification.setAttribute('data-bs-delay', fade_delay)
-    }
-
-    notification_header.innerText = header;
-
-    if (type === 'error') {
-        notification.className = "toast bg-warning opacity-75";
-    }
-    if (type === 'success') {
-        notification.className = "toast bs-success opacity-75";
-    }
-    notification_content.innerText = message;
-
-    var toast_notification = bootstrap.Toast.getOrCreateInstance(notification);
-    toast_notification.show();
-};
 // For loading more emotional journals
 let journals_scrollable = document.getElementById('journals-scrollable');
 let journals_container = document.getElementById('journals-container');
@@ -305,8 +428,7 @@ function load_more_journals() {
     this.scrollTimeout = setTimeout(() => {
         // Check if the scroll position is at the top
         if (journals_scrollable.scrollLeft === 0) {
-            // Your code here, indicating that the element has been scrolled all the way up
-            console.log('Scrolled all the way up! Offset: ', journals_offset);
+            // console.log('Scrolled all the way up! Offset: ', journals_offset);
             journals_offset += 1;
 
             let j_loading_container = document.createElement('div');
@@ -331,7 +453,7 @@ function load_more_journals() {
 let journals_offset = 0
 journals_scrollable.addEventListener('scroll', load_more_journals)
 
-// For usage datetime
+// For usage datetime proper display
 const user_timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 const date_options = {
     timeZone: user_timezone,
@@ -343,7 +465,7 @@ const date_options = {
     second: '2-digit',
     hour12: false,
 };
-
+// Handle all types of data recived by socket
 chatSocket.onmessage = function (e) {
     let data = JSON.parse(e.data);
 
@@ -352,7 +474,7 @@ chatSocket.onmessage = function (e) {
         var message = data.message;
         var header = data.header
 
-        create_notification(type, header, message);
+        createNotification(type, header, message);
 
         return
     }
@@ -457,7 +579,13 @@ chatSocket.onmessage = function (e) {
             new_journal_card.querySelector('span.journal-date').innerText = user_journal.date;
             new_journal_card.querySelector('span.journal-updates').innerText = user_journal.updates_count;
 
-            let journal = JSON.parse(user_journal.journal);
+            var journal = JSON.parse(user_journal.journal);
+            journal = Object.entries(journal).sort((a, b) => b[1] - a[1]); // Descending order
+
+            // Step 2: Convert back to an object if needed
+            journal = Object.fromEntries(journal);
+            // console.log(journal)
+
             for (let [key, value] of Object.entries(journal)) {
                 let new_j_list_item = j_list_item.cloneNode();
                 new_j_list_item.className += ' journal-emotion';
@@ -498,7 +626,7 @@ chatSocket.onmessage = function (e) {
 
             for (var i = journals.length - 1; i >= 0; --i) {
                 add_journal_entry(journals[i], true);
-                console.log(journals[i])
+                // console.log(journals[i])
             };
             last_journal.scrollIntoView();
 
@@ -525,7 +653,7 @@ chatSocket.onmessage = function (e) {
     }
 
     else if (data.type === 'user_responder') {
-        console.log(data);
+        // console.log(data);
         let responder_gpt_model = data.gpt_model;
         let responder_personality = data.responder_personality;
         let messages_for_input_extraction = data.messages_for_input_extraction;
@@ -547,7 +675,7 @@ chatSocket.onmessage = function (e) {
     }
 
     else if (data.type === 'user_transactions_history') {
-        console.log(data);
+        // console.log(data);
         let transactions_container = document.getElementById('transactions-container');
 
         user_transactions = data.transactions;
@@ -570,7 +698,12 @@ chatSocket.onmessage = function (e) {
 
             new_transaction.appendChild(transaction_date)
             transaction_amount = transaction_text.cloneNode();
-            transaction_amount.innerText = "Amount: " + user_transactions[i].amount + '$';
+            if (user_transactions[i].amount == 0) {
+                transaction_amount.innerText = "Amount: < 0.0001$";
+            }
+            else {
+                transaction_amount.innerText = "Amount: " + user_transactions[i].amount + '$';
+            }
             new_transaction.appendChild(transaction_amount);
 
             transactions_container.appendChild(new_transaction);
@@ -603,7 +736,12 @@ chatSocket.onmessage = function (e) {
     function add_message_in_chat(is_bot, message, beforeend = true) {
         let newMessage = messageRow.cloneNode(true);
         let newMessageContainer = newMessage.querySelector('.message');
-        newMessageContainer.innerText = message;
+        // newMessageContainer.innerText = message;
+        newMessageContainer.innerHTML = marked.parse(message);
+        let images = newMessageContainer.querySelectorAll('img');
+        images.forEach(image => {
+            image.className = 'img-fluid';
+        });
 
         if (is_bot === true) {
             let botIconColumn = newMessage.firstElementChild;
@@ -622,7 +760,7 @@ chatSocket.onmessage = function (e) {
 
         return newMessageContainer
     }
-    console.log('Recived data:', data)
+    // console.log('Recived data:', data)
 
     if (data.type === 'loading_response') {
         loading_message_container = add_message_in_chat(is_bot = true, message = '...');
@@ -666,36 +804,36 @@ chatSocket.onmessage = function (e) {
         lable_base.type = 'text';
         lable_base.className = 'form-lable';
 
-        let toolHeading = document.createElement('h5');
-        toolHeading.innerText = "Tool is missing inputs: " + data.tool;
-        inputs_form.appendChild(toolHeading);
+        let tool_heading = document.createElement('h5');
+        tool_heading.innerText = "Tool is missing inputs: " + data.tool.replace('_', ' ');
+        inputs_form.appendChild(tool_heading);
 
-        function capitalizeFirstLetter(str) {
-            return str.charAt(0).toUpperCase() + str.slice(1);
+        function format_input(str) {
+            return (str.charAt(0).toUpperCase() + str.slice(1)).replace('_', ' ');
         }
 
         let tool_description = document.createElement('p');
-        tool_description.innerText = "Inputs description:\n" + capitalizeFirstLetter(data.inputs_description);
+        tool_description.innerText = "Inputs description:\n" + format_input(data.inputs_description);
         inputs_form.appendChild(tool_description);
 
         let found_inputs = data.found_inputs;
 
         for (var i = 0; i < data.missing_inputs.length; i++) {
-            var missingLable = lable_base.cloneNode();
-            missingLable.innerText = capitalizeFirstLetter(data.missing_inputs[i]);
-            missingLable.innerHTML += '<span class="badge m-1">Required</span>'
-            inputs_form.appendChild(missingLable);
+            var missing_lable = lable_base.cloneNode();
+            missing_lable.innerText = format_input(data.missing_inputs[i]);
+            missing_lable.innerHTML += '<span class="badge m-1">Required</span>'
+            inputs_form.appendChild(missing_lable);
 
-            var missingInput = input_base.cloneNode();
-            missingInput.name = data.missing_inputs[i];
-            missingInput.setAttribute('required', '');
-            inputs_form.appendChild(missingInput);
+            var missing_input = input_base.cloneNode();
+            missing_input.name = data.missing_inputs[i];
+            missing_input.setAttribute('required', '');
+            inputs_form.appendChild(missing_input);
 
             delete found_inputs[data.missing_inputs[i]];
         };
         for (var input in found_inputs) {
             var inputLable = lable_base.cloneNode();
-            inputLable.innerText = capitalizeFirstLetter(input);
+            inputLable.innerText = format_input(input);
             inputs_form.appendChild(inputLable);
 
             var inputInput = input_base.cloneNode();
@@ -739,7 +877,7 @@ chatSocket.onmessage = function (e) {
         inputs_form.addEventListener('submit', (e) => {
             e.preventDefault();
             let inputs = inputs_form.querySelectorAll('input');
-            console.log(inputs);
+            // console.log(inputs);
 
             let inputValues = {};
             inputs.forEach((input) => {
@@ -753,6 +891,11 @@ chatSocket.onmessage = function (e) {
             }));
 
             inputs_message_container.parentNode.remove();
+
+            loading_message = document.getElementById('loading_message');
+            if (loading_message != null) {
+                loading_message.parentNode.remove();
+            }
         })
         updateUserBalance();
         return
@@ -804,5 +947,5 @@ chatSocket.onclose = function (e) {
     var message = 'Disconnected from the server. Please reload your webpage to reconnect.';
     var header = 'Lost connection';
 
-    create_notification(type, header, message, 99999);
+    createNotification(type, header, message, 99999);
 }

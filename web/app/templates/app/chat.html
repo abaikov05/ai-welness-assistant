@@ -10,7 +10,7 @@
         <div class="col-md-3 mt-2 pt-2" id="sidebar">
             <!-- User profile modal -->
             <div class="row m-2 mx-3"><button type="button" data-bs-toggle="modal" data-bs-target="#profile-modal"
-                    class="btn text-center p-2 m-0 sidebar-button" id="show-profile-btn">User profile</button></div> 
+                    class="btn text-center p-2 m-0 sidebar-button" id="show-profile-btn">User profile</button></div>
             <div class="modal fade" id="profile-modal" tabindex="-1" aria-labelledby="profile-modal-label"
                 aria-hidden="true">
                 <div class="modal-dialog modal-lg">
@@ -30,17 +30,21 @@
                                         <option value="1">GPT-4o</option>
                                         <option value="2">GPT-4o mini (Smaller and cheaper version)</option>
                                     </select>
-                                    <label for="till-profile-update" class="form-label mt-3">Messages till profile update</label>
-                                    <p class="fw-light mb-1">How many messages from you should be sent before updating profile</p>
+                                    <label for="till-profile-update" class="form-label mt-3">Messages till profile
+                                        update</label>
+                                    <p class="fw-light mb-1">How many messages from you should be sent before updating
+                                        profile</p>
                                     <div class="d-flex flex-row">
                                         <input type="range" class="form-range" min="1" max="20" step="1"
-                                        id="till-profile-update">
+                                            id="till-profile-update">
                                         <p class="py-0 px-2 mx-4 range-value" id="till-profile-update-val"></p>
                                     </div>
-                                    <label for="for-profile-update" class="form-label">Messages for profile update</label>
+                                    <label for="for-profile-update" class="form-label">Messages for profile
+                                        update</label>
                                     <p class="fw-light mb-1">How many chat messages to use to update profile</p>
                                     <div class="d-flex flex-row">
-                                        <input type="range" class="form-range" min="1" max="12" step="1"id="for-profile-update">
+                                        <input type="range" class="form-range" min="1" max="12" step="1"
+                                            id="for-profile-update">
                                         <p class="py-0 px-2 mx-4 range-value" id="for-profile-update-val"></p>
                                     </div>
                                     <div class="flex-row d-flex justify-content-end under-settings-border">
@@ -50,7 +54,8 @@
                             </div>
                             <h6 class="text-center">Profile entries</h6>
                             <div class="row mx-3">
-                                <button class="btn py-1 justify-content-center" id="add-profile-entry">Add profile entry</button>
+                                <button class="btn py-1 justify-content-center" id="add-profile-entry">Add profile
+                                    entry</button>
                             </div>
                             <form class="mx-3" id="profile-form"></form>
                         </div>
@@ -64,9 +69,11 @@
             </div>
             <!-- Emotional journal modal -->
             <div class="row m-2 mx-3">
-                <button type="button" class="btn text-center p-2 m-0 sidebar-button"  data-bs-toggle="modal" data-bs-target="#journal-modal" id="show-journal-btn">Emotional journal</button>
+                <button type="button" class="btn text-center p-2 m-0 sidebar-button" data-bs-toggle="modal"
+                    data-bs-target="#journal-modal" id="show-journal-btn">Emotional journal</button>
             </div>
-            <div class="modal fade" id="journal-modal" tabindex="-1" aria-labelledby="journal-modal-label" aria-hidden="true">
+            <div class="modal fade" id="journal-modal" tabindex="-1" aria-labelledby="journal-modal-label"
+                aria-hidden="true">
                 <div class="modal-dialog modal-lg">
                     <div class="modal-content mt-5">
                         <div class="modal-header py-2">
@@ -86,7 +93,8 @@
                                     </select>
                                     <label for="till-journal-update" class="form-label mt-3">Messages till journal
                                         update</label>
-                                    <p class="fw-light mb-1">How many messages from you should be sent before updating emotional journal</p>
+                                    <p class="fw-light mb-1">How many messages from you should be sent before updating
+                                        emotional journal</p>
                                     <div class="d-flex flex-row">
                                         <input type="range" class="form-range" min="1" max="20" step="1"
                                             id="till-journal-update">
@@ -94,7 +102,8 @@
                                     </div>
                                     <label for="for-journal-update" class="form-label">Messages for journal
                                         update</label>
-                                    <p class="fw-light mb-1">How many chat messages to use to update emotional journal</p>
+                                    <p class="fw-light mb-1">How many chat messages to use to update emotional journal
+                                    </p>
                                     <div class="d-flex flex-row">
                                         <input type="range" class="form-range" min="1" max="12" step="1"
                                             id="for-journal-update">
@@ -121,9 +130,11 @@
             </div>
             <!-- Responder modal -->
             <div class="row m-2 mx-3">
-                <button type="button" class="btn text-center p-2 m-0 sidebar-button"  data-bs-toggle="modal" data-bs-target="#responder-modal" id="show-responder-btn">Responder</button>
+                <button type="button" class="btn text-center p-2 m-0 sidebar-button" data-bs-toggle="modal"
+                    data-bs-target="#responder-modal" id="show-responder-btn">Responder</button>
             </div>
-            <div class="modal fade" id="responder-modal" tabindex="-1" aria-labelledby="responder-modal-label" aria-hidden="true">
+            <div class="modal fade" id="responder-modal" tabindex="-1" aria-labelledby="responder-modal-label"
+                aria-hidden="true">
                 <div class="modal-dialog modal-lg">
                     <div class="modal-content mt-5">
                         <div class="modal-header py-2">
@@ -141,18 +152,23 @@
                                         <option value="1">GPT-4o</option>
                                         <option value="2">GPT-4o mini (Smaller and cheaper version)</option>
                                     </select>
-                                    {% comment %} <label for="chat-history-to-pass" class="form-label mt-3">Messages for input extraction</label>
+                                    {% comment %} <label for="chat-history-to-pass" class="form-label mt-3">Messages for
+                                        input extraction</label>
                                     <div class="d-flex flex-row">
-                                        <input type="range" class="form-range" min="1" max="10" step="1" id="chat-history-to-pass">
+                                        <input type="range" class="form-range" min="1" max="10" step="1"
+                                            id="chat-history-to-pass">
                                         <p class="py-0 px-2 mx-4 range-value" id="chat-history-to-pass-val"></p>
                                     </div> {% endcomment %}
-                                    <label for="messages-for-input-extaction" class="form-label mt-3">Messages for input extraction</label>
+                                    <label for="messages-for-input-extaction" class="form-label mt-3">Messages for input
+                                        extraction</label>
                                     <p class="fw-light mb-1">How many chat messages to extract input from.</p>
                                     <div class="d-flex flex-row">
-                                        <input type="range" class="form-range" min="1" max="10" step="1" id="messages-for-input-extaction">
+                                        <input type="range" class="form-range" min="1" max="10" step="1"
+                                            id="messages-for-input-extaction">
                                         <p class="py-0 px-2 mx-4 range-value" id="messages-for-input-extaction-val"></p>
                                     </div>
-                                    <label for="responder-personality" class="form-label mt-3">Set responder personatity</label>
+                                    <label for="responder-personality" class="form-label mt-3">Set responder
+                                        personatity</label>
                                     <textarea class="form-control" id="responder-personality"></textarea>
                                 </form>
                             </div>
@@ -160,16 +176,19 @@
                         <div class="modal-footer py-1">
                             <p>* Don't forget to save your changes!</p>
                             <button type="button" class="btn py-1" data-bs-dismiss="modal">Close</button>
-                            <button type="button" class="btn py-1" id="save-responder-settings">Save responder settings</button>
+                            <button type="button" class="btn py-1" id="save-responder-settings">Save responder
+                                settings</button>
                         </div>
                     </div>
                 </div>
             </div>
             <!-- Usage -->
             <div class="row m-2 mx-3">
-                <button type="button" class="btn text-center p-2 m-0 sidebar-button"  data-bs-toggle="modal" data-bs-target="#usage-modal" id="show-usage-btn">Usage</button>
+                <button type="button" class="btn text-center p-2 m-0 sidebar-button" data-bs-toggle="modal"
+                    data-bs-target="#usage-modal" id="show-usage-btn">Usage</button>
             </div>
-            <div class="modal fade" id="usage-modal" tabindex="-1" aria-labelledby="usage-modal-label" aria-hidden="true">
+            <div class="modal fade" id="usage-modal" tabindex="-1" aria-labelledby="usage-modal-label"
+                aria-hidden="true">
                 <div class="modal-dialog modal-lg">
                     <div class="modal-content mt-5">
                         <div class="modal-header py-2">
@@ -214,11 +233,16 @@
                         <!-- Message input part -->
                         <form id="message-form">
                             <div class="input-group d-flex" id="message-input-group">
-                                <div class="input-group-text flex-fill p-1" id="message-input">
+                                <div class="input-group-text flex-fill p-1 justify-content-center" id="message-input">
                                     {% csrf_token %}
                                     <textarea id="message_textbox" , name="message-textbox" autofocus
                                         form="message-form" rows="3" minlength="1" , maxlength="7000"
                                         class="form-control p-1" placeholder="Type your message..."></textarea>
+                                    <div class="d-flex flex-column justify-content-center d-none" id="audio-message">
+                                        <audio id="audio" controls></audio>
+                                        <button class="btn mt-1" type="button" id="cancel-audio">Cancel voice
+                                            message</button>
+                                    </div>
                                 </div>
                                 <button type="submit" class="btn" id="message-send">Send</button>
                             </div>
@@ -239,14 +263,42 @@
                             </div>
                         </form>
                     </div>
+                    <div class="col-12 col-md-2 mx-auto align-content-center">
+                        <div class="row">
+                            <div class="col-6 col-md-12">
+                                <div class=" flex-row d-flex justify-content-center">
+                                    <button id="record" class="btn"><img id="record-btn-ico" class="media-input-ico"
+                                            src="{% static '/app/mic.png' %}" alt="Record voice"></button>
+                                    <button id="stop" class="btn" disabled><img id="cancel-record-btn-ico"
+                                            class="media-input-ico" src="{% static '/app/stop-mic.png' %}"
+                                            alt="Stop recording"></button>
+                                    <!-- <button id="send" class="btn" disabled><img id="record-btn-ico" class="media-input-ico"
+                                    src="{% static '/app/mic.png' %}" alt=""></button> -->
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-12">
+                                <div class=" flex-row d-flex justify-content-center mt-2">
+                                    <input class="d-none" type="file" id="image-input" accept="image/*">
+                                    <button id="image-input-btn" class="btn"><img id="image-input-btn-ico"
+                                            class="media-input-ico" src="{% static '/app/img.png' %}"
+                                            alt="Stop recording"></button>
+                                    <button id="image-cancel-btn" class="btn" disabled><img id="image-cancel-btn-ico"
+                                            class="media-input-ico" src="{% static '/app/crossed-img.png' %}"
+                                            alt="Stop recording"></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+</div>
 <!-- Notifications -->
 <div class="toast-container position-fixed top-0 start-50 translate-middle-x mt-5">
-    <div id="notification" class="toast bg-warning opacity-75" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay=3000>
+    <div id="notification" class="toast bg-warning opacity-75" role="alert" aria-live="assertive" aria-atomic="true"
+        data-bs-delay=3000>
         <div class="toast-header">
             <strong class="me-auto" id="notification-header"></strong>
             <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
@@ -254,5 +306,6 @@
         <div class="toast-body text-center" id="notification-content"></div>
     </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script type="text/javascript" src="{% static 'app/js/chat.js' %}"></script>
 {% endblock %}

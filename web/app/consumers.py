@@ -1,4 +1,4 @@
-import json
+import json, io, math
 
 from decimal import Decimal
 
@@ -8,6 +8,7 @@ from .assistant.responder import Responder
 from .assistant.settings import *
 from .assistant.emotional_journal import EmotionalJournal
 from .assistant.moderation import Moderation
+from .assistant.helpers import openai_audio_transcription
 
 from .utils import get_chat_history, Encryption
 
@@ -69,7 +70,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'chat': chat_history
         }))
         
-    async def receive(self, text_data):
+    async def receive(self, text_data=None, bytes_data=None):
         """
         Handles receiving messages from the WebSocket.
 
@@ -92,18 +93,75 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Check if the user is authenticated
         if not user.is_authenticated:
             await self.close(close_code='1006')
-            print("Unauthenticated user sent payload!", text_data)
+            print("Unauthenticated user sent payload!", text_data, user)
             return
-        
-        try:
-            # Attempt to parse incoming JSON data
-            text_data_json = json.loads(text_data)
-            
-            if CONSUMERS_DEBUG:print(f"{'_'*20}\nSocket recived:\n{text_data_json}\n{'_'*20}")
+        # Handle media or simple text data payloads.
+        image = None
+        if bytes_data:
+            try:
+                user_balance = await User_balance.objects.aget(user=user)
+                if user_balance.balance < 0.01:
+                    await self.send(text_data=json.dumps({
+                            'type':'notification',
+                            'type_of_notification': 'error',
+                            'header': 'Balance',
+                            'message': 'Your balance is too low and may not be sufficient to generate response for your voice message! Please topup your balance.'
+                        }))
+                    return
+                # Split data on separator
+                media_metadata, media = bytes_data.split(b'|', 1)
+                media_metadata = json.loads(media_metadata)
 
-        except:
-            print("Socket recived wrong payload format")
-            return
+                if media_metadata['audio_size']:
+                    try:  
+                        audio = media[:media_metadata['audio_size']]
+                        # Create an in-memory file-like object of a voice.
+                        audio = io.BytesIO(audio)
+                        audio.name = "voice.webm"
+                        # Transcribe voice message and calculate cost.
+                        text, duration = await openai_audio_transcription(audio, AUDIO_TRANSCRIPTION_MODEL)
+                        await calculate_audio_cost(user_balance, duration)
+                        
+                        if CONSUMERS_DEBUG: print(f"Received audio data, with duration: {duration} and translated as: {text}")     
+                    except Exception as e:
+                        print(f"Error occurred while handling voice message: {e}")     
+                        return
+
+                if media_metadata['image_size'] and media_metadata['image_type']:
+                    image_type = media_metadata['image_type'][6:]
+                    if image_type.lower() not in ['png','jpg', 'jpeg', 'webp']:
+                        await self.send(text_data=json.dumps({
+                            'type':'notification',
+                            'type_of_notification': 'error',
+                            'header': 'Image',
+                            'message': 'Unsupported image type! Please upload only: .png, .jpg, .jpeg or .webp'
+                        }))
+                        return
+                    # Create an in-memory file-like object of an image.
+                    image = media[- media_metadata['image_size']:]
+                    image = io.BytesIO(image)
+                    image.name = f"image.{image_type}"         
+                # If only image was sent use text from the textbox
+                if not media_metadata['audio_size']:
+                    text = media_metadata['message']
+
+                text_data_json = {
+                    'type': 'message',
+                    'use_tools': media_metadata['use_tools'] == 1,
+                    'extract_inputs': media_metadata['extract_inputs'] == 1,
+                    'message': text
+                }
+            except Exception as e:
+                print(f"Error occurred while handling media payload: {e}")
+                return
+        else:    
+            try:
+                # Attempt to parse incoming JSON data
+                text_data_json = json.loads(text_data)
+                if CONSUMERS_DEBUG:print(f"{'_'*20}\nSocket recived:\n{text_data_json}\n{'_'*20}")
+            except:
+                print("Socket recived wrong payload format")
+                return
         
         encryption = Encryption()
         ###  Handle different payload types
@@ -446,6 +504,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     }))
                 return
             
+            await self.send(text_data=json.dumps({
+                'type':'loading_response'
+            }))
+            
             tool = text_data_json['tool']
             inputs = text_data_json['inputs']
 
@@ -454,8 +516,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             
             current_date = timezone.now().date()
             user_emotional_journal, journal_created = await User_emotional_journal.objects.aget_or_create(user=user, date=current_date)
-            if journal_created:
-                if CONSUMERS_DEBUG: print('New emotional journal created!')
                 
             chat = await Chat.objects.aget(user=user)
 
@@ -567,7 +627,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     'type':'notification',
                     'type_of_notification': 'error',
                     'header': 'Message is too long!',
-                    'message': 'Assistant will not respond to this message and it is not saved in chat.'
+                    'message': 'The assistant will not reply to this message, and it will not be saved in the chat.'
                 }))
             return
         
@@ -592,16 +652,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if CONSUMERS_DEBUG: print("Message count:", message_count)
 
         user_profile_object, profile_created = await User_profile.objects.aget_or_create(user=user)
-        if profile_created:
-            if CONSUMERS_DEBUG:print('New user profile created!')
         user_profile = encryption.decrypt(user_profile_object.content)
         if CONSUMERS_DEBUG: print("User profile: ", user_profile)
 
         user_settings = await User_settings.objects.aget(user=user)
-
         user_emotional_journal, journal_created = await User_emotional_journal.objects.aget_or_create(user=user, date=current_date)
-        if journal_created:
-            if CONSUMERS_DEBUG: print('New emotional journal created!')
 
         emotional_journal = EmotionalJournal(
             journal = user_emotional_journal.journal,
@@ -621,7 +676,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             user_settings.messages_for_input_extraction,
             user_settings.messages_till_journal_update,'\n', '_'*20
         )
-
         assistant_settings = AssistantSettings(
             responder_gpt_model = user_settings.responder_gpt_model,
             responder_personality = user_settings.responder_personality,
@@ -633,7 +687,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             messages_till_journal_update = user_settings.messages_till_journal_update,
             messages_for_journal_update = user_settings.messages_for_journal_update
         )
-
         responder = Responder(
             user_profile = user_profile,
             chat_history = chat_history,
@@ -642,13 +695,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
             assistant_settings = assistant_settings,
             user=user,
         )
-        
         response = await responder.handle_user_message(
             user_message = user_message,
             use_tools = use_tools,
-            extract_inputs = extract_inputs
+            extract_inputs = extract_inputs,
+            image=image
         )
-
         text, metadata, profile, journal = response
 
         if CONSUMERS_DEBUG: print("Responder used tokens: ", responder.total_tokens_used)
@@ -680,11 +732,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     else:   
                         user_profile_object.content = encryption.encrypt(json.dumps(profile))
                         await user_profile_object.asave()
-                    # user_profile_object.content = encryption.encrypt(json.dumps(profile))
-                    # await user_profile_object.asave()
 
                 if journal:
-                    # journal_text, updates_count, date = journal
                     journal_text, updates_count = journal
 
                     user_emotional_journal.journal = json.dumps(journal_text)
@@ -694,10 +743,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     
                 return
         
-        await self.send(text_data=json.dumps({
-            'type': 'ai_response',
-            'ai_message': text
-        }))
+        if text:
+            await self.send(text_data=json.dumps({
+                'type': 'ai_response',
+                'ai_message': text
+            }))
+            new_bot_message = Message(chat=chat, text=encryption.encrypt(text), is_bot=True)
+            await new_bot_message.asave()
+        else:
+            await self.send(text_data=json.dumps({
+                'type': 'ai_response',
+                'ai_message': "Apologies, the I currently experiencing some technical difficulties. Please try again later. Thank you for your patience!"
+            }))
         
         # To measure systems response generaing speed. 
         if CONSUMERS_DEBUG: 
@@ -714,9 +771,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             print('Responder, Tools, Recommender model:', assistant_settings.responder_gpt_model)
             print('Profiler model:', assistant_settings.profiler_gpt_model)
             print('Journal model:', assistant_settings.journal_gpt_model)
-            
-        new_bot_message = Message(chat=chat, text=encryption.encrypt(text), is_bot=True)
-        await new_bot_message.asave()
         
         if profile:
             if len(profile) >= MAX_PROFILE_LENGTH:
@@ -773,7 +827,11 @@ async def get_emotional_journals(user: object, limit: int, offset: int = 0, for_
 
     return journals
 
-async def calculate_cost(user_balance: User_balance, tokens_used: dict, assistant_settings: AssistantSettings):
+async def calculate_cost(user_balance: User_balance, tokens_used: dict, assistant_settings: AssistantSettings) -> None:
+    """
+    Calculates cost of used tokens by every asistant module.  Creates and saves transactions for
+    modules to database and updates user balance.
+    """
     def module_cost(module, gpt_model):
         module_cost = Decimal(tokens_used[module]['prompt_tokens']/1000 * GPT_MODELS_PRICING[gpt_model]['input'])
         module_cost += Decimal(tokens_used[module]['completion_tokens']/1000 * GPT_MODELS_PRICING[gpt_model]['output'])
@@ -803,6 +861,22 @@ async def calculate_cost(user_balance: User_balance, tokens_used: dict, assistan
     new_user_balance = new_user_balance.quantize(Decimal('0.0001'), rounding='ROUND_FLOOR')
     
     if CONSUMERS_DEBUG: print(f"User balance: {user_balance.balance} - New balance: {new_user_balance}")
+    
+    user_balance.balance = new_user_balance
+    await user_balance.asave()
+    
+async def calculate_audio_cost(user_balance: User_balance, audio_duration: float) -> None:
+    """
+    Calculates cost of voice message transcription. Creates and saves transaction to database and 
+    updates user balance.
+    """
+    audio_cost = Decimal(0)
+    audio_cost = math.ceil(audio_duration) / 60 * AUDIO_TRANSCRIPTION_MODEL_PRICING
+    new_transaction = Balance_transaction(type = 'Audio', balance = user_balance, amount = audio_cost)
+    await new_transaction.asave()
+
+    new_user_balance = Decimal(user_balance.balance) - Decimal(audio_cost)
+    new_user_balance = new_user_balance.quantize(Decimal('0.0001'), rounding='ROUND_FLOOR')
     
     user_balance.balance = new_user_balance
     await user_balance.asave()

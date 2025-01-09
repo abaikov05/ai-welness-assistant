@@ -1,5 +1,5 @@
 from textwrap import dedent
-
+from ..moderation import Moderation
 # For weather tool
 import pyowm
 # For news tool
@@ -31,62 +31,65 @@ def tools_info() -> str:
         
     message = "Here is tools list:\n"
     for tool in tools_list:
-        message += f"Name: {tool['name'].replace('_', ' ')}; Description: {tool['description']}; Inputs: {tool['inputs'].replace('_', ' ')}\n"
+        message += f"Name: {tool['name'].replace('_', ' ')}; Description: {tool['description']}; Inputs: {', '.join(tool['inputs']).replace('_', ' ')};\nInputs desription: {tool['inputs_description']}\n"
 
     return message
 
-def weather(location) -> str|None:
+def weather(location: str) -> str|None:
+    """
+    This function retrieves weather information for a given location using the OpenWeatherMap API.
+    """
     if location and location.strip() != '':
-        try:
-            # Make request to weather API
-            owm = pyowm.OWM(WEATHER_API_KEY)
-            weather_mgr = owm.weather_manager()
-            observation = weather_mgr.weather_at_place(location)
-            # Extracte needed info
-            temperature = observation.weather.temperature("celsius")["temp"]
-            humidity = observation.weather.humidity
-            wind = observation.weather.wind()
-            status = observation.weather.detailed_status
-            # Create message for assistant
-            message = dedent(f"""\
-            Weather in: {location}
-            Status: {status}
-            Temperature: {temperature}°C
-            Humidity: {humidity}%
-            Wind Speed: {wind["speed"]} m/s""")
+        # Make request to weather API
+        owm = pyowm.OWM(WEATHER_API_KEY)
+        weather_mgr = owm.weather_manager()
+        observation = weather_mgr.weather_at_place(location)
+        # Extract needed info
+        temperature = observation.weather.temperature("celsius")["temp"]
+        humidity = observation.weather.humidity
+        wind = observation.weather.wind()
+        status = observation.weather.detailed_status
+        # Create message for assistant
+        message = dedent(f"""\
+        Weather in: {location}
+        Status: {status}
+        Temperature: {temperature}°C
+        Humidity: {humidity}%
+        Wind Speed: {wind["speed"]} m/s""")
 
-            return message
-        except Exception as e:
-            print(f"Error in weather tool: {str(e)}")
-            return None
+        return message
 
     else:
         raise Exception('No location passed')
 
-def news(key_words, category = None) -> str|None:
 
+def news(key_words: str, category: str = None) -> str|None:
+    """
+    Uses the News API and fetches latest news headlines based on key words
+    and category, returning articles details to assistant.
+    """
     available_categories = ['business', 'entertainment', 'general', 'health', 'science', 'sports', 'technology']
-
-    if category:
-        category = str(category).lower()
-
-    if category not in available_categories:
-        category = None
-        print('Category is not available or empty!')
+    result = ''
+    print(category, type(category), '-'*100)
+    if category or category.strip() == '':
+        category = category.strip().lower()
+        if category not in available_categories:
+            result += f'Invalid category "{category}" provided, results are based on key words only.'
+            category = None
 
     try:
-        # Get news from news API
         newsapi = NewsApiClient(api_key=NEWS_API_KEY)
         top_headlines = newsapi.get_top_headlines(
-            q = str(key_words),
+            q = key_words,
             category = category,
-            language = 'en')
-        # And create message for assistant with news
-        result = "Tell user about these found articles. You MUST mention source and link to the article!" + str(top_headlines['articles'])
+            language = 'en',
+            page_size=20)
+
+        result = "Tell user about these found articles. You MUST mention source and link (url) to the article!" + str(top_headlines['articles'])
         return result
+    
     except Exception as e:
-        print(f"Something went wrong while searching news: {e}")
-        return None
+        raise Exception(f"Something went wrong while searching news: {e}")
 
 def calculator(expression) -> str|None:
     try:
@@ -99,7 +102,10 @@ def calculator(expression) -> str|None:
         return None
 
 async def chat_summarizer(messages_to_summarize, user) -> tuple[str|None, dict|None]:
-
+    
+    if int(messages_to_summarize) > 25:
+        raise Exception('Number of messages to summarize cannot exceed 25.')
+        
     chat = await Chat.objects.aget(user=user)
     messages = await get_chat_history(chat, int(messages_to_summarize))
     
@@ -121,7 +127,12 @@ async def website_checker(website_link: str):
         title = soup.title.string if soup.title else "No title available"
         paragraphs = [p.get_text(strip=True) for p in soup.find_all('p')]
         content = f"Title: {title}\nContent:\n" +'\n'.join(paragraphs)
-
+        
+        moder = Moderation()
+        flaged, categories = moder.moderate(content[1000:])
+        if flaged:
+            raise Exception(f"Content of the wepbage user asked to check has ill content. Categories: {categories}")
+        
         # Create message for assitant.
         message = dedent(f"""\
         User asked to get information about this website.

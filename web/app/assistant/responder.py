@@ -12,16 +12,14 @@ import asyncio
 import openai
 
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
-openai.api_key = os.getenv("OPENAI_KEY")
+from io import BytesIO
 
 class Responder:
     """
     The Responder class manages the response generation process within the AI Wellbeing Assistant.
     """
-    def __init__(self, user_profile: str, chat_history: list[str], assistant_settings: AssistantSettings, emotional_journal: EmotionalJournal, user, message_count: int = None) -> None:
+    def __init__(self, user_profile: str, chat_history: list[str], assistant_settings: AssistantSettings,
+                 emotional_journal: EmotionalJournal, user, message_count: int = None) -> None:
         """
         Initialize the Responder class with necessary attributes.
 
@@ -50,9 +48,11 @@ class Responder:
             "Responder": {}
         }
 
-    async def handle_user_message(self, user_message: str, use_tools: bool, extract_inputs: bool) -> tuple[str|None, dict|None, str|None, str|None]:
+    async def handle_user_message(self, user_message: str, use_tools: bool,
+                                  extract_inputs: bool, image: BytesIO = None) -> tuple[str|None, dict|None, str|None, str|None]:
         """
-        Process and handle the user's message, applying moderation, updating profile and emotional journal, and generating a response.
+        Process and handle the user's message, applying moderation, updating profile and emotional journal,
+        searching for recommendations, handling tools and finaly generating a response.
 
         Args:
         - user_message (str): User's latest message.
@@ -60,7 +60,7 @@ class Responder:
         - extract_inputs (bool): Indicates whether to extract inputs for tools.
 
         Returns:
-        - Tuple containing response, metadata, profile update, and journal update.
+        - Tuple containing: response, metadata, profile update, and journal update.
         """
         # Apply moderation to the user's message.
         flagged, flagged_categories = self.moderation.moderate(user_message = user_message)
@@ -69,58 +69,41 @@ class Responder:
             if RESPONDER_DEBUG: print(response)
 
             metadata, profile_update, journal_update = None, None, None
-
             return response, metadata, profile_update, journal_update
-        
         # Initialize task list for concurrent processing.
         task_list = {}
-
         # If using tools, create a task for handling tools.
         if use_tools:
             tools_task = asyncio.create_task(
                 self.tools.handle_tools(
-                    user_message = user_message,
-                    chat_history = self.chat_history,
-                    extract_inputs = extract_inputs,
+                    user_message = user_message, chat_history = self.chat_history, extract_inputs = extract_inputs,
                     messages_for_input_extraction = self.settings.messages_for_input_extraction
+                    )
                 )
-            )
             task_list['tools_task'] = tools_task
-
         # Check if it's time to update the user profile.
         if (self.message_count // 2) % self.settings.messages_till_profile_update == 0:
             profile_update_task = asyncio.create_task(
-                self.user_profile.update_user_profile(
-                    chat_history = self.chat_history[-self.settings.messages_for_profile_update:],
-                    user_message = user_message,
-                    )
+                self.user_profile.update_user_profile(chat_history = self.chat_history[-self.settings.messages_for_profile_update:], user_message = user_message)
                 )
             task_list['profile_update_task'] = profile_update_task
-        
         # Check if it's time to update the emotional journal.
         if (self.message_count // 2) % self.settings.messages_till_journal_update == 0:
             journal_update_task = asyncio.create_task(
-                self.emotioal_journal.update_journal(
-                    chat_history = self.chat_history[-self.settings.messages_for_journal_update:],
-                    user_message=user_message
-                    )
+                self.emotioal_journal.update_journal(chat_history = self.chat_history[-self.settings.messages_for_journal_update:], user_message=user_message)
                 )
             task_list['journal_update_task'] = journal_update_task
-
         # Gather results from tasks concurrently.
         results = await asyncio.gather(*task_list.values())
-
         # Process tools results if the tools task was created.
         if task_list.get('tools_task'):
             tools_results = results.pop(0)
-            
             tools_result, metadata = tools_results
 
             if self.tools.total_tokens_used:
                 self.total_tokens_used['Tools'] = self.tools.total_tokens_used
         else:
             tools_result, metadata = None, None
-
         # Process profile update results if the profile update task was created.
         if task_list.get('profile_update_task'):
             profile_update, profiler_used_tokens = results.pop(0)
@@ -129,7 +112,6 @@ class Responder:
                 self.total_tokens_used['Profiler'] = profiler_used_tokens
         else:
             profile_update = None
-
         # Process journal update results if the journal update task was created.
         if task_list.get('journal_update_task'):
             journal_result = results.pop(0)
@@ -146,44 +128,42 @@ class Responder:
                 self.total_tokens_used['Journal'] = journal_used_tokens
         else:
             journal_update = None
-        
         # Initiate prompt to add tools result.
         prompt = ""
-        
         # Check if tools returned metadata
         if metadata is not None:
-
             # If tool executed successfuly, add result to prompt
             if metadata.get('type') == 'tool_result':
                 prompt += tools_result_additon(tools_result)
-
             # If tool missing inputs, return everything and skip generating response.
             elif metadata.get('type') == 'input_request':
                 response = None
                 return response, metadata, profile_update, journal_update
-            
+            # If tool exeption accrued return tools result that contains descripton of exeption as a response.
             elif metadata.get('type') == 'tool_exeption':
                 response = tools_result
                 return response, metadata, profile_update, journal_update
             else:
                 print("Unexpected result of the tool. Metadata:", metadata)
-                return
-
+                return None, None, None, None
+        # If there is no need for tool or tool executed successfuly, search recommendations.
         recommendations, recomm_used_tokens = await self.recommender.handle_recommendations(user_message)
         if recomm_used_tokens:
             self.total_tokens_used["Recommender"] = recomm_used_tokens
-        
-        system_message = responder_system_message('\n'.join(self.user_profile.user_profile), self.emotioal_journal.journal, '\n'.join('; '.join(inner) for inner in recommendations))
+        # Create system prompt.
+        system_message = responder_system_message(
+            user_profile = '\n'.join(self.user_profile.user_profile),
+            emotional_journal = self.emotioal_journal.journal,
+            recommendations = '\n'.join('; '.join(inner) for inner in recommendations),
+            tools_names = self.tools.all_tools_names()
+            )
         system_message += '\n' + personality_addition(self.settings.responder_personality)
-
+        # Create prompt
         prompt += responder_prompt(chat_history = '\n'.join(self.chat_history[-CHAT_HISTORY_MESSAGES_FOR_RESPONDER:]),  user_message = user_message)
         if RESPONDER_DEBUG: print(f"{'_'*20}\nResponder\nSysytem prompt:\n{system_message}\nPrompt:\n{prompt}\n{'_'*20}")
 
         # Request a response from the OpenAI GPT model.
-        response, responder_used_tokens = await openai_chat_request(
-            prompt=prompt,
-            system=system_message,
-            model=self.settings.responder_gpt_model)
+        response, responder_used_tokens = await openai_chat_request(prompt = prompt, system = system_message, model = self.settings.responder_gpt_model, image = image)
         
         # Gather token usage statistics.
         if responder_used_tokens:
@@ -225,12 +205,11 @@ class Responder:
                 response = tools_result
                 return response, metadata
 
-        print("NiggA"*125,'\nRecommenders message:',self.chat_history[-1])
         recommendations, recomm_used_tokens = await self.recommender.handle_recommendations(self.chat_history[-1])
         if recomm_used_tokens:
             self.total_tokens_used["Recommender"] = recomm_used_tokens
         
-        system_message = responder_system_message('\n'.join(self.user_profile.user_profile), self.emotioal_journal.journal, '\n'.join('; '.join(inner) for inner in recommendations))
+        system_message = responder_system_message('\n'.join(self.user_profile.user_profile), self.emotioal_journal.journal, '\n'.join('; '.join(inner) for inner in recommendations), self.tools.all_tools_names())
         prompt += responder_prompt('\n'.join(self.chat_history[-CHAT_HISTORY_MESSAGES_FOR_RESPONDER:]))
 
 
@@ -245,11 +224,14 @@ class Responder:
             self.total_tokens_used['Responder'] = responder_used_tokens
 
         return response, metadata
-def responder_system_message(user_profile, emotional_journal, recommendations):
+def responder_system_message(user_profile: str, emotional_journal: str, recommendations: str, tools_names: list = None):
     return dedent(f"""\
 You are a helpful wellbeing assistant.
 You care about user and trying to make users mental and physical health better.
 You have a chat history as a context, focus on answering to LAST USER MESSAGE.
+You have access to the following tools: {', '.join(tools_names)}
+You can't call this tools by yourself, you only get results of these tools!
+Try to use appropriate emojis.
 You have a user profile to better understand the user:|
 {user_profile}|
 You also have the user's emotional journal.The emotional journal reflects\

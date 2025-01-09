@@ -38,13 +38,13 @@
     },
     {
         'name': 'calculator',
-        'description': 'Calculates given expression.',
+        'description': 'Calculates given math expression.',
         'function_name': calculator,
         'needs_inputs': True,
         'inputs': ['expression'],
         'required_inputs': ['expression'],
-        'inputs_description': 'Simple expression',
-        'needs_user_db': True,
+        'inputs_description': 'Simple math expression',
+        'needs_user_db': False,
         'uses_gpt': False
     },
     {

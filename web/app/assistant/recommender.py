@@ -353,6 +353,9 @@ class Recommender:
             else:
                 break
         
+        if RECOMMENDER_DEBUG:
+            print("_"*20, "\nFrom text:", chat_history,'\n recommendation vector was created:', list(zip(RECOMMENDATION_CATEGORIES, vector)), '\nand these recommendations were found:', str(recommendations), '\n', '_'*20)
+        
         return result, used_tokens
         
         

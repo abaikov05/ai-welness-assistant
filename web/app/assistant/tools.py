@@ -130,7 +130,7 @@ class Tools():
                 return tool
             
         if TOOLS_DEBUG: print(f"Tool '{tool_name}' not found!")    
-        return None
+        return
     
     async def extract_inputs(self, tool_name: str, chat_history: str) -> tuple[dict[str, str | None], list[str | None]] | None:
         """
@@ -291,8 +291,8 @@ class Tools():
         if tool['needs_inputs']:
             # Check if inputs are provided.
             if inputs:
+                # Try to execute the tool with the provided inputs.
                 try:
-                    # Try to execute the tool with the provided inputs.
                     if tool['needs_user_db'] and tool['uses_gpt']:
                         tool_result, token_usage = await tool['function_name'](**inputs, user=self.user)
                         if token_usage:
@@ -320,7 +320,7 @@ class Tools():
 
                     # If the tool fails to execute, create a message with description of an error and
                     # metadata with input request to get correct input data from user and rerun the tool.
-                    tool_result = await self.describe_input_error(tool, inputs, e)
+                    tool_result = await self.describe_exception(tool, inputs, e)
                     metadata = {
                         "type": "tool_exeption",
                         "tool": tool['name'],
@@ -375,44 +375,25 @@ class Tools():
         if len(chat_history) >= 1: previous_message = chat_history[-1]
         else: previous_message = None
         
-        extracted_tools = await self.extract_tools(
-            user_message = user_message,
-            previous_message= previous_message,
-        )
-        
-        
-        # If tool detected in chat
+        extracted_tools = await self.extract_tools(user_message = user_message, previous_message= previous_message)
+        # If tool detected
         if extracted_tools:
-
             # Check if the first extracted tool needs inputs.
             if self.get_tool(extracted_tools[0])['needs_inputs']:
-
                 # If inputs extraction is on.
                 if extract_inputs is True:
-
-                    # Extract inputs for the tool.
+                    # Extract inputs.
                     inputs, missing_inputs = await self.extract_inputs(
                         tool_name = extracted_tools[0],
-                        chat_history = '\n'.join(chat_history[:messages_for_input_extraction])+ "\nLast user message: " + user_message
-                    )
-
+                        chat_history = '\n'.join(chat_history[:messages_for_input_extraction])+ "\nLast user message: " + user_message)
                     # If there are missing inputs, create message and metadata asking for inputs.
                     if missing_inputs:
-                        tool_result, metadata = self.ask_for_inputs(
-                            tool_name = extracted_tools[0],
-                            missing_inputs = missing_inputs,
-                            inputs = inputs
-                        )
+                        tool_result, metadata = self.ask_for_inputs(tool_name = extracted_tools[0], missing_inputs = missing_inputs, inputs = inputs)
                         return tool_result, metadata
-                    
                     # If inputs are passed, run the tools.
                     if inputs is not None:
-                        tool_result, metadata = await self.run_tools(
-                            tools_list = extracted_tools,
-                            inputs = inputs
-                    )
+                        tool_result, metadata = await self.run_tools(tools_list = extracted_tools, inputs = inputs)
                         return tool_result, metadata
-                    
                 # If inputs extraction turned off, create message and metadata asking for inputs.
                 else:
                     tool = self.get_tool(extracted_tools[0])
@@ -421,18 +402,16 @@ class Tools():
                     
                     tool_result, metadata = self.ask_for_inputs(extracted_tools[0], missing_inputs, inputs)
                     return tool_result, metadata
-                
             # If the tool does not need inputs, run the tool without inputs.
             else:
                 tool_result, metadata = await self.run_tools(extracted_tools, inputs=None)
                 return tool_result, metadata
-            
         # If no tools are detected, return None, None.
         else:
             if TOOLS_DEBUG: print("No tools detected!")
             return None, None
     
-    async def describe_input_error(self, tool: dict, inputs: dict, exeption: str):
+    async def describe_exception(self, tool: dict, inputs: dict, exeption: str):
         """
         Generate a description for the exception raised during tool execution.
 
@@ -446,13 +425,19 @@ class Tools():
         """
 
          # Provide instructions for translating the exception.
-        system_message = dedent("""Your task is to translate exeption raised calling function.
-        Your response should be short and simple to uderstand for unexpierienced user.
-        Don't say function(), insted call it tool.
-        Ask for correct inputs.""")
+        system_message = dedent("""\
+        Your task is to translate any exception raised when calling a tool into\
+        a simple and understandable response for an inexperienced user.
+        - Keep your response concise, avoiding technical jargon.
+        - Refer to the function as a "tool."
+        - If the exception is due to incorrect inputs, describe the correct inputs clearly and in simple terms.
+        - If exception is too technical, describe it as an unknown error. 
+        DO NOT DISCLOSE SYSTEM INFORMATION, SUCH AS INTERNAL DETAILS, ERROR STACK TRACES, OR DEBUG DATA.""")
 
         # Create a prompt with details about the exception and inputs.
-        prompt = dedent(f"""Exeeption: {exeption}
+        prompt = dedent(f"""\
+        Exeeption: {exeption}
+        Tool: {tool}
         Inputs that tool needs: {tool['inputs_description']}
         Inputs passed: {inputs}""")
 
@@ -469,3 +454,10 @@ class Tools():
     def save_token_usage(self, token_usage: dict):
         for key in self.total_tokens_used:
             self.total_tokens_used[key] += token_usage[key]
+            
+    def all_tools_names(self) -> list:
+        tool_names = []
+        for tool in self.tools_list:
+            tool_names.append(tool['name'])
+   
+        return tool_names
