@@ -1,17 +1,311 @@
 {% extends 'app/base.html' %}
+{% load static%}
 
 {% block title %}Chat{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-md-3 bg-black show" id="collapseSidePanel">
-            <a class="m-2 btn bg-secondary" data-bs-toggle="collapse" href="#collapseSidePanel" role="button" aria-expanded="true" aria-controls="collapseSidePanel">Hide</a>
+<div class="container-fluid h-100">
+    <div class="row pt-5 h-100">
+        <!-- Sidebar column -->
+        <div class="col-md-3 mt-2 pt-2" id="sidebar">
+            <!-- User profile modal -->
+            <div class="row m-2 mx-3"><button type="button" data-bs-toggle="modal" data-bs-target="#profile-modal"
+                    class="btn text-center p-2 m-0 sidebar-button" id="show-profile-btn">User profile</button></div>
+            <div class="modal fade" id="profile-modal" tabindex="-1" aria-labelledby="profile-modal-label"
+                aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content mt-5">
+                        <div class="modal-header py-2">
+                            <h1 class="modal-title fs-5">User profile</h1>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="user-profile-modal">
+                            <div class="text-center mx-3 mb-2">
+                                <h6>Profiler settings</h6>
+                                <form class="text-start pb-3" id="profile-settings-form">
+                                    <label for="profiler-gpt-select" class="form-label">GPT model</label>
+                                    <select class="form-select" aria-label="Default select example"
+                                        id="profiler-gpt-select">
+                                        <option value="0" id="profiler-selected-model" selected></option>
+                                        <option value="1">GPT-4o</option>
+                                        <option value="2">GPT-4o mini (Smaller and cheaper version)</option>
+                                    </select>
+                                    <label for="till-profile-update" class="form-label mt-3">Messages till profile
+                                        update</label>
+                                    <p class="fw-light mb-1">How many messages from you should be sent before updating
+                                        profile</p>
+                                    <div class="d-flex flex-row">
+                                        <input type="range" class="form-range" min="1" max="20" step="1"
+                                            id="till-profile-update">
+                                        <p class="py-0 px-2 mx-4 range-value" id="till-profile-update-val"></p>
+                                    </div>
+                                    <label for="for-profile-update" class="form-label">Messages for profile
+                                        update</label>
+                                    <p class="fw-light mb-1">How many chat messages to use to update profile</p>
+                                    <div class="d-flex flex-row">
+                                        <input type="range" class="form-range" min="1" max="12" step="1"
+                                            id="for-profile-update">
+                                        <p class="py-0 px-2 mx-4 range-value" id="for-profile-update-val"></p>
+                                    </div>
+                                    <div class="flex-row d-flex justify-content-end under-settings-border">
+                                        <button class="btn py-1 mt-2" id="save-profile-settings">Save settings</button>
+                                    </div>
+                                </form>
+                            </div>
+                            <h6 class="text-center">Profile entries</h6>
+                            <div class="row mx-3">
+                                <button class="btn py-1 justify-content-center" id="add-profile-entry">Add profile
+                                    entry</button>
+                            </div>
+                            <form class="mx-3" id="profile-form"></form>
+                        </div>
+                        <div class="modal-footer py-1">
+                            <p>* To delete entry simply leave it empty. Don't forget to save your changes!</p>
+                            <button type="button" class="btn py-1" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn py-1" id="save-profile-changes">Save entries</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Emotional journal modal -->
+            <div class="row m-2 mx-3">
+                <button type="button" class="btn text-center p-2 m-0 sidebar-button" data-bs-toggle="modal"
+                    data-bs-target="#journal-modal" id="show-journal-btn">Emotional journal</button>
+            </div>
+            <div class="modal fade" id="journal-modal" tabindex="-1" aria-labelledby="journal-modal-label"
+                aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content mt-5">
+                        <div class="modal-header py-2">
+                            <h1 class="modal-title fs-5" id="journal-modal-label">Emotional journal</h1>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="emotional-journal-modal">
+                            <div class="text-center mx-3 mb-2">
+                                <h6>Emotional journal settings</h6>
+                                <form class="text-start pb-3" id="emotional-journal-form">
+                                    <label for="journal-gpt-select" class="form-label">GPT model</label>
+                                    <select class="form-select" aria-label="Default select example"
+                                        id="journal-gpt-select">
+                                        <option value="0" id="journal-selected-model" selected></option>
+                                        <option value="1">GPT-4o</option>
+                                        <option value="2">GPT-4o mini (Smaller and cheaper version)</option>
+                                    </select>
+                                    <label for="till-journal-update" class="form-label mt-3">Messages till journal
+                                        update</label>
+                                    <p class="fw-light mb-1">How many messages from you should be sent before updating
+                                        emotional journal</p>
+                                    <div class="d-flex flex-row">
+                                        <input type="range" class="form-range" min="1" max="20" step="1"
+                                            id="till-journal-update">
+                                        <p class="py-0 px-2 mx-4 range-value" id="till-journal-update-val"></p>
+                                    </div>
+                                    <label for="for-journal-update" class="form-label">Messages for journal
+                                        update</label>
+                                    <p class="fw-light mb-1">How many chat messages to use to update emotional journal
+                                    </p>
+                                    <div class="d-flex flex-row">
+                                        <input type="range" class="form-range" min="1" max="12" step="1"
+                                            id="for-journal-update">
+                                        <p class="py-0 px-2 mx-4 range-value" id="for-journal-update-val"></p>
+                                    </div>
+                                    <!-- <div class="flex-row d-flex justify-content-end under-settings-border">
+                                        <button class="btn py-1 mt-2" id="save-journal-settings">Save settings</button>
+                                    </div> -->
+                                    <h6 class="text-center">Emotional journal entires</h6>
+                                    <div class="overflow-x-auto" id="journals-scrollable">
+                                        <div class="d-inline-flex" id="journals-container">
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="modal-footer py-1">
+                            <p>* Don't forget to save your changes!</p>
+                            <button type="button" class="btn py-1" data-bs-dismiss="modal">Close</button>
+                            <button class="btn py-1" id="save-journal-settings">Save settings</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Responder modal -->
+            <div class="row m-2 mx-3">
+                <button type="button" class="btn text-center p-2 m-0 sidebar-button" data-bs-toggle="modal"
+                    data-bs-target="#responder-modal" id="show-responder-btn">Responder</button>
+            </div>
+            <div class="modal fade" id="responder-modal" tabindex="-1" aria-labelledby="responder-modal-label"
+                aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content mt-5">
+                        <div class="modal-header py-2">
+                            <h1 class="modal-title fs-5" id="responder-modal-label">Responder</h1>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="emotional-responder-modal">
+                            <div class="text-center mx-3 mb-2">
+                                <h6>Responder settings</h6>
+                                <form class="text-start pb-3" id="emotional-responder-form">
+                                    <label for="responder-gpt-select" class="form-label">GPT model</label>
+                                    <select class="form-select gpt-select" aria-label="Default select example"
+                                        id="responder-gpt-select">
+                                        <option value="0" id="responder-selected-model" selected></option>
+                                        <option value="1">GPT-4o</option>
+                                        <option value="2">GPT-4o mini (Smaller and cheaper version)</option>
+                                    </select>
+                                    {% comment %} <label for="chat-history-to-pass" class="form-label mt-3">Messages for
+                                        input extraction</label>
+                                    <div class="d-flex flex-row">
+                                        <input type="range" class="form-range" min="1" max="10" step="1"
+                                            id="chat-history-to-pass">
+                                        <p class="py-0 px-2 mx-4 range-value" id="chat-history-to-pass-val"></p>
+                                    </div> {% endcomment %}
+                                    <label for="messages-for-input-extaction" class="form-label mt-3">Messages for input
+                                        extraction</label>
+                                    <p class="fw-light mb-1">How many chat messages to extract input from.</p>
+                                    <div class="d-flex flex-row">
+                                        <input type="range" class="form-range" min="1" max="10" step="1"
+                                            id="messages-for-input-extaction">
+                                        <p class="py-0 px-2 mx-4 range-value" id="messages-for-input-extaction-val"></p>
+                                    </div>
+                                    <label for="responder-personality" class="form-label mt-3">Set responder
+                                        personatity</label>
+                                    <textarea class="form-control" id="responder-personality"></textarea>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="modal-footer py-1">
+                            <p>* Don't forget to save your changes!</p>
+                            <button type="button" class="btn py-1" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn py-1" id="save-responder-settings">Save responder
+                                settings</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Usage -->
+            <div class="row m-2 mx-3">
+                <button type="button" class="btn text-center p-2 m-0 sidebar-button" data-bs-toggle="modal"
+                    data-bs-target="#usage-modal" id="show-usage-btn">Usage</button>
+            </div>
+            <div class="modal fade" id="usage-modal" tabindex="-1" aria-labelledby="usage-modal-label"
+                aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content mt-5">
+                        <div class="modal-header py-2">
+                            <h1 class="modal-title fs-5" id="usage-modal-label">Usage</h1>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="text-center mx-3 mb-2">
+                                <h6>Usage history</h6>
+                                <div class="overflow-y-auto" id="transactions-scrollable">
+                                    <ul class="list-group" id="transactions-container">
+                                        <!-- Here all transactions -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer py-1">
+                            <button type="button" class="btn py-1" data-bs-dismiss="modal">Close</button>
+                            <a href="{% url 'balance'%}">
+                                <button type="button" class="btn py-1">Top up your balance</button>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
-        <div class="col bg-dark vh-100">
-            <a class="m-2 btn bg-dark text-white collapse" id="collapseSidePanel" data-bs-toggle="collapse" href="#collapseSidePanel" role="button" aria-expanded="false" aria-controls="collapseSidePanel">Show</a>
-            <p>Hi</p>
+        <!-- Chat column -->
+        <div class="col h-100 d-flex flex-column" id="chat-column">
+            <div class="flex-row mt-4">
+                <a id="hide-sidebar"><img id="hide-btn-img" src="{% static 'app/hide_sidebar.png' %}"
+                        alt="Hide/Show"></a>
+            </div>
+            <div class="container mt-auto mb-3">
+                <div class="row">
+                    <div id="chat-container" class="col-md-10 mx-auto">
+                        <!-- Here are all chat messages -->
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-10 mx-auto">
+                        <!-- Message input part -->
+                        <form id="message-form">
+                            <div class="input-group d-flex" id="message-input-group">
+                                <div class="input-group-text flex-fill p-1 justify-content-center" id="message-input">
+                                    {% csrf_token %}
+                                    <textarea id="message_textbox" , name="message-textbox" autofocus
+                                        form="message-form" rows="3" minlength="1" , maxlength="7000"
+                                        class="form-control p-1" placeholder="Type your message..."></textarea>
+                                    <div class="d-flex flex-column justify-content-center d-none" id="audio-message">
+                                        <audio id="audio" controls></audio>
+                                        <button class="btn mt-1" type="button" id="cancel-audio">Cancel voice
+                                            message</button>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn" id="message-send">Send</button>
+                            </div>
+                            <div class="d-flex input-group">
+                                <div class="d-flex flex-fill justify-content-center input-group-text p-0"
+                                    id="tool-btns">
+                                    <input type="checkbox" class="btn-check form-check-input" id="use_tools" checked
+                                        autocomplete="off" disabled>
+                                    <label class="btn flex-fill" for="use_tools" id="use-tools-btn">
+                                        <p id="use-tools-btn-text" class="m-0">Use tools</p>
+                                    </label>
+                                    <input type="checkbox" class="btn-check form-check-input" id="extract_inputs"
+                                        checked autocomplete="off">
+                                    <label class="btn flex-fill" for="extract_inputs" id="extract-inputs-btn">
+                                        <p id="extract-inputs-btn-text" class="m-0">Extract inputs</p>
+                                    </label>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="col-12 col-md-2 mx-auto align-content-center">
+                        <div class="row">
+                            <div class="col-6 col-md-12">
+                                <div class=" flex-row d-flex justify-content-center">
+                                    <button id="record" class="btn"><img id="record-btn-ico" class="media-input-ico"
+                                            src="{% static '/app/mic.png' %}" alt="Record voice"></button>
+                                    <button id="stop" class="btn" disabled><img id="cancel-record-btn-ico"
+                                            class="media-input-ico" src="{% static '/app/stop-mic.png' %}"
+                                            alt="Stop recording"></button>
+                                    <!-- <button id="send" class="btn" disabled><img id="record-btn-ico" class="media-input-ico"
+                                    src="{% static '/app/mic.png' %}" alt=""></button> -->
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-12">
+                                <div class=" flex-row d-flex justify-content-center mt-2">
+                                    <input class="d-none" type="file" id="image-input" accept="image/*">
+                                    <button id="image-input-btn" class="btn"><img id="image-input-btn-ico"
+                                            class="media-input-ico" src="{% static '/app/img.png' %}"
+                                            alt="Stop recording"></button>
+                                    <button id="image-cancel-btn" class="btn" disabled><img id="image-cancel-btn-ico"
+                                            class="media-input-ico" src="{% static '/app/crossed-img.png' %}"
+                                            alt="Stop recording"></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+</div>
+<!-- Notifications -->
+<div class="toast-container position-fixed top-0 start-50 translate-middle-x mt-5">
+    <div id="notification" class="toast bg-warning opacity-75" role="alert" aria-live="assertive" aria-atomic="true"
+        data-bs-delay=3000>
+        <div class="toast-header">
+            <strong class="me-auto" id="notification-header"></strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body text-center" id="notification-content"></div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script type="text/javascript" src="{% static 'app/js/chat.js' %}"></script>
 {% endblock %}

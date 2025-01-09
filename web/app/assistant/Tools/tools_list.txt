@@ -1,0 +1,72 @@
+# Write your tools descriptions here.
+# Tools that use GPT should output tuple (tool_result, token_usage)
+[
+    {
+        'name': 'tools_info',
+        'description': 'Gives info about available tools.',
+        'function_name': tools_info,
+        'needs_inputs': False,
+        'inputs': [],
+        'required_inputs': [],
+        'inputs_description': '',
+        'needs_user_db': False,
+        'uses_gpt': False
+    },
+
+    {
+        'name': 'weather',
+        'description': 'Tells current weather in specified pocation.',
+        'function_name': weather,
+        'needs_inputs': True,
+        'inputs': ['location'],
+        'required_inputs': ['location'],
+        'inputs_description': 'Location - city, street or region to check weather.',
+        'needs_user_db': False,
+        'uses_gpt': False
+    },
+
+    {
+        'name': 'news',
+        'description': 'Searches for current top news headlines, by key words and category.',
+        'function_name': news,
+        'needs_inputs': True,
+        'inputs': ['key_words', 'category'],
+        'required_inputs': ['key_words'],
+        'inputs_description': 'Key words - word or a phrase to search news for. Catogory - you can only select one of these categories: business, entertainment, general, health, science, sports, technology. (optional)',
+        'needs_user_db': False,
+        'uses_gpt': False
+    },
+    {
+        'name': 'calculator',
+        'description': 'Calculates given math expression.',
+        'function_name': calculator,
+        'needs_inputs': True,
+        'inputs': ['expression'],
+        'required_inputs': ['expression'],
+        'inputs_description': 'Simple math expression',
+        'needs_user_db': False,
+        'uses_gpt': False
+    },
+    {
+        'name': 'chat_summarizer',
+        'description': 'Summarizes recent chat with assistant.',
+        'function_name': chat_summarizer,
+        'needs_inputs': True,
+        'inputs': ['messages_to_summarize'],
+        'required_inputs': ['messages_to_summarize'],
+        'inputs_description': 'How much messages from chat to summarize.',
+        'needs_user_db': True,
+        'uses_gpt': True
+    },
+    {
+        'name': 'website_checker',
+        'description': 'Fetches website content for the assistant from the given link.',
+        'function_name': website_checker,
+        'needs_inputs': True,
+        'inputs': ['website_link'],
+        'required_inputs': ['website_link'],
+        'inputs_description': 'Link to the website to get information from.',
+        'needs_user_db': False,
+        'uses_gpt': False
+    }
+]

@@ -1,0 +1,28 @@
+div.card{
+    height: 200px;
+}
+
+header, .card-body{
+    background-color: #CED4DA;
+    color: black;
+}
+body.dark-theme header, body.dark-theme .card-body, body.dark-theme .card{
+    background: #15191e;
+    color: rgb(214, 214, 214);
+}
+
+a.btn {
+    background-color: #DEE2E6;
+    color: black;
+}
+body.dark-theme a.btn{
+    background-color: #212529;
+    color: white;
+}
+
+body.dark-theme footer p{
+    color: rgb(219, 219, 219);
+}
+footer p{
+    color: rgb(29, 29, 29);
+}

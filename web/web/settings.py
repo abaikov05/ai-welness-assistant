@@ -25,19 +25,22 @@ SECRET_KEY = 'django-insecure-0wd*oacfgz%c69m#^v*m*@bmubj_x8r50q7!-h!e$1!+nw6zt%
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = ['bbe8-91-105-27-232.ngrok-free.app', '127.0.0.1']
+CSRF_TRUSTED_ORIGINS = ['https://*bbe8-91-105-27-232.ngrok-free.app', 'https://*127.0.0.1']
 
 # Application definition
 
 INSTALLED_APPS = [
+    'channels',
+    
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'app'
+
+    'app',
 ]
 
 MIDDLEWARE = [
@@ -70,6 +73,13 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'web.wsgi.application'
 
+ASGI_APPLICATION = 'web.asgi.application'
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases

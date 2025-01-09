@@ -1,0 +1,53 @@
+form{
+    background-color: #CED4DA;
+}
+body.dark-theme form{
+    background-color: #15191e!important;
+    border-color: rgba(0, 0, 0, 0.7)!important;
+}
+
+body.dark-theme input.form-control{
+    background-color: #212529!important;
+    border-color: rgba(0, 0, 0, 0.7);
+}
+
+p, h4, h2, label.form-label{
+    color: black!important;
+}
+body.dark-theme p, body.dark-theme h4, body.dark-theme h2, body.dark-theme label.form-label{
+    color: whitesmoke!important;
+}
+
+input{
+    background-color: whitesmoke!important;
+}
+body.dark-theme input{
+    color: whitesmoke!important;
+}
+
+span{
+    color: rgba(0, 0, 0, 0.8);
+}
+body.dark-theme span{
+    color: rgba(255, 255, 255, 0.7);
+}
+
+li{
+    color: rgba(0, 0, 0, 0.8);
+}
+body.dark-theme li{
+    color: rgba(255, 255, 255, 0.7);
+}
+
+button{
+    background-color: #DEE2E6!important;
+    color: black;
+}
+body.dark-theme button{
+    background-color: #0c0c0c!important;
+    color: whitesmoke;
+}
+
+ul.errorlist > li{
+    color: rgb(139, 0, 0);
+}

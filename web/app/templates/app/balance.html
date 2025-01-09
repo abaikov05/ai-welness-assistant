@@ -1,0 +1,42 @@
+{% extends 'app/base.html' %}
+{% load static%}
+
+{% block style %}<link rel="stylesheet" href="{% static 'app/auth_style.css' %}">{% endblock %}
+
+{% block title %}Balance{% endblock %}
+
+{%block content%}
+<div class="container-fluid text-white ">
+    <div class="row justify-content-center">
+        <div class="col-sm-6 mt-5">
+            <form method="POST" class="py-3 px-4 border rounded-3 mt-5">
+                {% csrf_token %}
+              <h2 class="card-title text-center mb-4">Balance Top-up (For demo)</h2>
+              <div class="mb-3">
+                <label for="amount" class="form-label" disabled>Amount to Top-up</label>
+                <input type="number" class="form-control" id="amount" min="1" max="999" name="amount" placeholder="Enter amount" required>
+              </div>
+              
+              <div class="mb-3">
+                <label for="cardNumber" class="form-label" disabled>Card Number</label>
+                <input type="text" class="form-control" id="cardNumber" name="cardNumber" placeholder="Enter card number" disabled>
+              </div>
+              
+              <div class="mb-3">
+                <label for="expiryDate" class="form-label" disabled>Expiry Date</label>
+                <input type="text" class="form-control" id="expiryDate" name="expiryDate" placeholder="MM/YYYY" disabled>
+              </div>
+              
+              <div class="mb-3">
+                <label for="cvv" class="form-label" disabled>CVV</label>
+                <input type="text" class="form-control" id="cvv" name="cvv" placeholder="Enter CVV" disabled>
+              </div>
+              <div class="row text-center">
+                  <button type="submit" class="btn">Top-up Balance</button>
+              </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script type="text/javascript" src="{% static 'app/js/balance.js' %}"></script>
+{% endblock %}

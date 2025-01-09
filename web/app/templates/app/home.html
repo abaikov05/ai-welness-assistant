@@ -1,9 +1,68 @@
 {% extends 'app/base.html' %}
+{% load static%}
 
-{%block title%}
-Home
-{%endblock%}
+{% block style %}<link rel="stylesheet" href="{% static 'app/home_style.css' %}">{% endblock %}
+
+{%block title%}Home{%endblock%}
 
 {%block content%}
-<h1>Test</h1>
+<div class="container-fluid h-100">
+    <div class="row pt-5 h-100">
+        <header class="text-center py-5">
+            <h1 class="display-4">AI Well-being Assistant</h1>
+            <p class="lead">Your AI companion for a healthier and happier life</p>
+        </header>
+    
+        <div class="container mt-5">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body d-flex flex-column">
+                            <h2 class="card-title">Personalization</h2>
+                            <p class="card-text">Let our AI understand you better! The Profiler feature analyzes your recent chat conversations to update or generate a user profile. Concise entries are crafted, focusing on your preferences, likes, dislikes, and key aspects of your personality.</p>
+                            <a href="{% url 'chat' %}" class="btn mt-auto">Start chatting</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body d-flex flex-column">
+                            <h2 class="card-title">Emotional Journal</h2>
+                            <p class="card-text">Our Emotional Journal system dives deep into your conversations, providing insightful analyses of the common primal emotions you might be feeling while chating. Each emotion is marked on a scale from 0 to 100, helping you understand and track your emotional well-being.</p>
+                            <a href="{% url 'chat' %}" class="btn mt-auto">Start chatting</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+        <div class="container mt-5">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body d-flex flex-column">
+                            <h2 class="card-title">Intelligent Tools</h2>
+                            <p class="card-text">Our Wellbeing Assistant comes equipped with a range of intelligent tools. It dynamically decides which tools to use based on your conversations and effortlessly extracts inputs from the chat. Experience a personalized and seamless interaction tailored to your needs.</p>
+                            <a href="#" class="btn mt-auto">Try out</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body d-flex flex-column">
+                            <h2 class="card-title">Wellbeing Recommendatins</h2>
+                            <p class="card-text">Create a better everyday life with personalized wellness recommendations powered by our AI assistant..</p>
+                            <a href="#" class="btn mt-auto">Try out</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+        <footer class="text-white text-center py-3">
+            <p>&copy; 2024 Wellbeing Assistant</p>
+        </footer>
+    </div>
+</div>
+
 {%endblock%}
